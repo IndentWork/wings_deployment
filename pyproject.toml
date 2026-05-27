@@ -1,0 +1,24 @@
+[project]
+name = "wings-deployment"
+version = "0.1.0"
+description = "Terraform IaC for Wings — provisions Azure infrastructure and deploys wings images per environment"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+branch = "main"
+changelog_file = "CHANGELOG.md"
+build_command = ""
+upload_to_pypi = false
+upload_to_vcs_release = true
+
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false
+
+[tool.semantic_release.commit_parser_options]
+allowed_tags = ["feat", "fix", "hotfix", "refactor", "perf", "style", "test", "docs", "build", "ci", "chore"]
+minor_tags = ["feat"]
+patch_tags = ["fix", "hotfix", "refactor", "perf"]
