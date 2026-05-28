@@ -1,0 +1,94 @@
+name: Bootstrap
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+env:
+  LOCATION: southindia
+
+jobs:
+  bootstrap:
+    name: Bootstrap Infrastructure
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}"}'
+
+      - name: Ensure backend.hcl exists
+        run: |
+          if [ ! -f bootstrap/backend.hcl ]; then
+            echo "backend.hcl not found, creating..."
+            cat > bootstrap/backend.hcl <<EOF
+          resource_group_name  = "rg-wings-bootstrap"
+          storage_account_name = "storagewings001"
+          container_name       = "tfstate"
+          EOF
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add bootstrap/backend.hcl
+            git commit -m "chore: create backend.hcl"
+            git push origin main
+            echo "backend.hcl created and committed."
+          else
+            echo "backend.hcl already exists, skipping."
+          fi
+
+      - name: Read backend.hcl
+        run: |
+          RESOURCE_GROUP=$(grep 'resource_group_name' bootstrap/backend.hcl | sed 's/.*= *"\(.*\)"/\1/')
+          STORAGE_ACCOUNT=$(grep 'storage_account_name' bootstrap/backend.hcl | sed 's/.*= *"\(.*\)"/\1/')
+          CONTAINER_NAME=$(grep 'container_name' bootstrap/backend.hcl | sed 's/.*= *"\(.*\)"/\1/')
+          echo "RESOURCE_GROUP=$RESOURCE_GROUP" >> $GITHUB_ENV
+          echo "STORAGE_ACCOUNT=$STORAGE_ACCOUNT" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
+
+      - name: Ensure Resource Group exists
+        run: |
+          if az group show --name $RESOURCE_GROUP &>/dev/null; then
+            echo "Resource group $RESOURCE_GROUP already exists, skipping."
+          else
+            echo "Creating resource group $RESOURCE_GROUP..."
+            az group create --name $RESOURCE_GROUP --location $LOCATION
+            echo "Resource group $RESOURCE_GROUP created."
+          fi
+
+      - name: Ensure Storage Account exists
+        run: |
+          if az storage account show --name $STORAGE_ACCOUNT --resource-group $RESOURCE_GROUP &>/dev/null; then
+            echo "Storage account $STORAGE_ACCOUNT already exists, skipping."
+          else
+            echo "Creating storage account $STORAGE_ACCOUNT..."
+            az storage account create \
+              --name $STORAGE_ACCOUNT \
+              --resource-group $RESOURCE_GROUP \
+              --location $LOCATION \
+              --sku Standard_LRS \
+              --kind StorageV2 \
+              --min-tls-version TLS1_2
+            echo "Storage account $STORAGE_ACCOUNT created."
+          fi
+
+      - name: Ensure Blob Container exists
+        run: |
+          if az storage container show --name $CONTAINER_NAME --account-name $STORAGE_ACCOUNT &>/dev/null; then
+            echo "Container $CONTAINER_NAME already exists, skipping."
+          else
+            echo "Creating container $CONTAINER_NAME..."
+            az storage container create \
+              --name $CONTAINER_NAME \
+              --account-name $STORAGE_ACCOUNT \
+              --auth-mode login
+            echo "Container $CONTAINER_NAME created."
+          fi
