@@ -1,0 +1,80 @@
+name: Bootstrap
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    name: Bootstrap Infrastructure
+    runs-on: ubuntu-latest
+
+    env:
+      RESOURCE_GROUP: rg-wings-bootstrap
+      STORAGE_ACCOUNT: storagewings001
+      CONTAINER_NAME: tfstate
+      LOCATION: southindia
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}"}'
+
+      - name: Ensure Storage Account exists
+        run: |
+          if az storage account show --name $STORAGE_ACCOUNT --resource-group $RESOURCE_GROUP &>/dev/null; then
+            echo "Storage account $STORAGE_ACCOUNT already exists, skipping."
+          else
+            echo "Creating storage account $STORAGE_ACCOUNT..."
+            az storage account create \
+              --name $STORAGE_ACCOUNT \
+              --resource-group $RESOURCE_GROUP \
+              --location $LOCATION \
+              --sku Standard_LRS \
+              --kind StorageV2 \
+              --min-tls-version TLS1_2
+            echo "Storage account $STORAGE_ACCOUNT created."
+          fi
+
+      - name: Ensure Blob Container exists
+        run: |
+          if az storage container show --name $CONTAINER_NAME --account-name $STORAGE_ACCOUNT &>/dev/null; then
+            echo "Container $CONTAINER_NAME already exists, skipping."
+          else
+            echo "Creating container $CONTAINER_NAME..."
+            az storage container create \
+              --name $CONTAINER_NAME \
+              --account-name $STORAGE_ACCOUNT \
+              --auth-mode login
+            echo "Container $CONTAINER_NAME created."
+          fi
+
+      - name: Write backend.hcl
+        run: |
+          cat > bootstrap/backend.hcl <<EOF
+          resource_group_name  = "$RESOURCE_GROUP"
+          storage_account_name = "$STORAGE_ACCOUNT"
+          container_name       = "$CONTAINER_NAME"
+          EOF
+
+      - name: Commit backend.hcl to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add bootstrap/backend.hcl
+          if git diff --cached --quiet; then
+            echo "backend.hcl unchanged, nothing to commit."
+          else
+            git commit -m "chore: update backend.hcl from bootstrap run"
+            git push origin main
+          fi
