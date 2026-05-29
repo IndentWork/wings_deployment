@@ -97,8 +97,36 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for env in dev qa prod; do
-            gh api -X PUT repos/${{ github.repository }}/environments/$env \
-              --field wait_timer=0 \
-              --silent && echo "Environment $env ensured." || echo "Environment $env already exists."
+          # dev — no approval required, auto-deploys
+          gh api -X PUT repos/${{ github.repository }}/environments/dev \
+            --input - <<'BODY'
+          {"reviewers": []}
+          BODY
+          echo "Environment dev ensured."
+
+          # qa and prod — require approval from REQUIRED_REVIEWER org variable
+          REVIEWER="${{ vars.REQUIRED_REVIEWER }}"
+          for env in qa prod; do
+            if [ -n "$REVIEWER" ]; then
+              REVIEWER_ID=$(gh api users/$REVIEWER --jq '.id' 2>/dev/null)
+              if [ -n "$REVIEWER_ID" ] && [ "$REVIEWER_ID" != "null" ]; then
+                gh api -X PUT repos/${{ github.repository }}/environments/$env \
+                  --input - <<EOF
+          {"reviewers": [{"type": "User", "id": $REVIEWER_ID}]}
+          EOF
+                echo "Environment $env ensured with required reviewer: $REVIEWER."
+              else
+                gh api -X PUT repos/${{ github.repository }}/environments/$env \
+                  --input - <<'BODY'
+          {"reviewers": []}
+          BODY
+                echo "WARNING: GitHub user '$REVIEWER' not found. Environment $env created without required reviewers."
+              fi
+            else
+              gh api -X PUT repos/${{ github.repository }}/environments/$env \
+                --input - <<'BODY'
+          {"reviewers": []}
+          BODY
+              echo "Environment $env ensured (set REQUIRED_REVIEWER org variable to enable approval gate)."
+            fi
           done
