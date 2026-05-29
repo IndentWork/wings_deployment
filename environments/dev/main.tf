@@ -24,3 +24,13 @@ module "resource_group" {
   env       = var.env
   location  = var.location
 }
+
+module "app_service_plan" {
+  source              = "../../modules/app-service"
+  project             = var.project
+  env                 = var.env
+  location            = module.resource_group.location
+  resource_group_name = module.resource_group.name
+  sku_name            = "S1"
+}
+
