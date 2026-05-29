@@ -1,6 +1,23 @@
 # CHANGELOG
 
 
+## v0.3.0 (2026-05-29)
+
+### Features
+
+- Add destroy pipelines for envs and sandbox with shared concurrency
+  ([#11](https://github.com/IndentWork/wings_deployment/pull/11),
+  [`23b521c`](https://github.com/IndentWork/wings_deployment/commit/23b521cacfb782a9ee27face569aed2f2d64ac2f))
+
+- _destroy-env.yml: reusable workflow running terraform destroy -auto-approve for a given
+  environment - destroy-envs.yml: destroys dev, qa, prod in parallel; runs every 2 hours via
+  schedule and on workflow_dispatch - destroy-sandbox.yml: destroys sb on workflow_dispatch only -
+  deploy.yml: change concurrency group from deploy-main to terraform-ops
+
+All terraform workflows now share the terraform-ops concurrency group with cancel-in-progress: false
+  — any new run waits for the existing one to complete, preventing state lock conflicts.
+
+
 ## v0.2.0 (2026-05-29)
 
 ### Bug Fixes
