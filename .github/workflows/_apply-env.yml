@@ -1,0 +1,49 @@
+name: Apply Environment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Environment to apply (dev, qa, prod)"
+        required: true
+        type: string
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_CLIENT_SECRET:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+
+jobs:
+  apply:
+    name: Apply ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init -backend-config=../../bootstrap/backend.hcl
+        working-directory: environments/${{ inputs.environment }}
+
+      - name: Download Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.environment }}-tfplan
+          path: environments/${{ inputs.environment }}
+
+      - name: Terraform Apply
+        run: terraform apply ${{ inputs.environment }}.tfplan
+        working-directory: environments/${{ inputs.environment }}
