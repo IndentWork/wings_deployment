@@ -87,3 +87,39 @@ jobs:
     uses: ./.github/workflows/_validate-env.yml
     with:
       environment: prod
+
+  plan-dev:
+    needs: [validate-dev]
+    if: needs.validate-dev.result == 'success'
+    uses: ./.github/workflows/_plan-env.yml
+    with:
+      environment: dev
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+  plan-qa:
+    needs: [validate-qa]
+    if: needs.validate-qa.result == 'success'
+    uses: ./.github/workflows/_plan-env.yml
+    with:
+      environment: qa
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+  plan-prod:
+    needs: [validate-prod]
+    if: needs.validate-prod.result == 'success'
+    uses: ./.github/workflows/_plan-env.yml
+    with:
+      environment: prod
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
