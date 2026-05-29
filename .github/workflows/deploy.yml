@@ -2,14 +2,13 @@ name: Deploy
 
 on:
   workflow_run:
-    workflows: ["Bootstrap"]
+    workflows: ["Version"]
     types: [completed]
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
   id-token: write
-  pull-requests: write
 
 concurrency:
   group: deploy-main
@@ -22,34 +21,12 @@ env:
   ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
 jobs:
-  version:
-    name: Version
-    runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success'
-
-    outputs:
-      released: ${{ steps.release.outputs.released }}
-      version: ${{ steps.release.outputs.version }}
-      tag: ${{ steps.release.outputs.tag }}
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Python Semantic Release
-        id: release
-        uses: python-semantic-release/python-semantic-release@v9
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
   detect-changes:
     name: Detect Changes
     runs-on: ubuntu-latest
-    needs: [version]
-
+    if: github.event.workflow_run.conclusion == 'success'
     outputs:
+      modules: ${{ steps.filter.outputs.modules }}
       dev: ${{ steps.filter.outputs.dev }}
       qa: ${{ steps.filter.outputs.qa }}
       prod: ${{ steps.filter.outputs.prod }}
@@ -61,6 +38,8 @@ jobs:
         id: filter
         with:
           filters: |
+            modules:
+              - 'modules/**'
             dev:
               - 'environments/dev/**'
               - 'modules/**'
@@ -70,6 +49,31 @@ jobs:
             prod:
               - 'environments/prod/**'
               - 'modules/**'
+
+  validate-modules:
+    name: Validate modules
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.modules == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: modules
+
+      - uses: terraform-linters/setup-tflint@v4
+
+      - name: TFLint Init
+        run: tflint --init
+        working-directory: modules
+
+      - name: TFLint
+        run: tflint --recursive
+        working-directory: modules
 
   validate-dev:
     name: Validate dev
@@ -173,8 +177,11 @@ jobs:
   plan-dev:
     name: Plan dev
     runs-on: ubuntu-latest
-    needs: [detect-changes, validate-dev]
-    if: needs.validate-dev.result == 'success'
+    needs: [detect-changes, validate-modules, validate-dev]
+    if: |
+      always() &&
+      needs.validate-dev.result == 'success' &&
+      (needs.validate-modules.result == 'success' || needs.validate-modules.result == 'skipped')
 
     steps:
       - uses: actions/checkout@v4
@@ -199,8 +206,11 @@ jobs:
   plan-qa:
     name: Plan qa
     runs-on: ubuntu-latest
-    needs: [detect-changes, validate-qa]
-    if: needs.validate-qa.result == 'success'
+    needs: [detect-changes, validate-modules, validate-qa]
+    if: |
+      always() &&
+      needs.validate-qa.result == 'success' &&
+      (needs.validate-modules.result == 'success' || needs.validate-modules.result == 'skipped')
 
     steps:
       - uses: actions/checkout@v4
@@ -225,8 +235,11 @@ jobs:
   plan-prod:
     name: Plan prod
     runs-on: ubuntu-latest
-    needs: [detect-changes, validate-prod]
-    if: needs.validate-prod.result == 'success'
+    needs: [detect-changes, validate-modules, validate-prod]
+    if: |
+      always() &&
+      needs.validate-prod.result == 'success' &&
+      (needs.validate-modules.result == 'success' || needs.validate-modules.result == 'skipped')
 
     steps:
       - uses: actions/checkout@v4

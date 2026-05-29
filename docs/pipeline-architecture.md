@@ -6,34 +6,39 @@ This document describes the CI/CD pipeline for `wings_deployment/`. It is a livi
 
 ## Overview
 
-The pipeline has four stages — **Bootstrap**, **Validate**, **Plan**, and **Apply** — running in sequence. Validate and Plan run in parallel per environment. Apply runs sequentially across environments with approval gates.
+The pipeline is split into four workflow files chained via `workflow_run`. Validate and Plan run in parallel per environment. Apply runs sequentially with approval gates.
 
 ```
 push to main
      │
      ▼
-Bootstrap
+bootstrap.yml         creates Azure infra + GitHub Environments (dev/qa/prod)
+     │ workflow_run
+     ▼
+version.yml           PSR version bump → pyproject.toml + CHANGELOG.md + git tag
+     │ workflow_run
+     ▼
+deploy.yml
+  detect-changes      which envs + modules are affected?
+     │
+     ├── validate-modules  (if modules/** changed)
+     ├── validate-dev  ────┐
+     ├── validate-qa   ────┤ fmt + validate + tflint (parallel)
+     └── validate-prod─────┘
+     │
+     ├── plan-dev  ────────┐
+     ├── plan-qa   ────────┤ terraform plan, artifact saved (parallel)
+     └── plan-prod─────────┘
      │
      ▼
-detect-changes
-     │
-     ├── Validate dev ──┐
-     ├── Validate qa  ──┤ (parallel, per env)
-     └── Validate prod──┘
-     │
-     ├── Plan dev ──────┐
-     ├── Plan qa  ──────┤ (parallel, per env)
-     └── Plan prod──────┘
-     │
+apply-dev   (auto)
      ▼
-Apply dev   (auto)
-     │
+apply-qa    (manual approval — GitHub Environment gate)
      ▼
-Apply qa    (manual approval)
-     │
-     ▼
-Apply prod  (manual approval)
+apply-prod  (manual approval — GitHub Environment gate)
 ```
+
+**On PRs:** only `validate.yml` runs — fmt + validate + tflint per affected env. No Azure calls.
 
 ---
 
@@ -79,6 +84,17 @@ A change in `modules/` potentially affects every environment that calls that mod
 
 ---
 
+## Workflow Files
+
+| File | Trigger | Purpose |
+|---|---|---|
+| `bootstrap.yml` | push to main | Azure infra + GitHub Environments |
+| `version.yml` | bootstrap completes | PSR version bump + CHANGELOG |
+| `deploy.yml` | version completes | detect → validate → plan → apply |
+| `validate.yml` | pull_request | fmt + validate + tflint (no Azure) |
+
+---
+
 ## Stages
 
 ### Bootstrap
@@ -91,12 +107,20 @@ A change in `modules/` potentially affects every environment that calls that mod
   - Storage account (`storagewings001`)
   - Blob container (`tfstate`)
 
+### Version
+
+- Triggered by bootstrap completion
+- Runs `python-semantic-release` — reads commit history since last tag
+- If `feat:` or `fix:` commits found: bumps version, updates `CHANGELOG.md`, commits to main, creates git tag
+- If only `chore:` commits: no bump, pipeline continues unchanged
+
 ### Validate
 
 - Runs per env (parallel), only for affected envs
-- Steps:
+- Also runs `validate-modules` if `modules/**` changed (fmt + tflint — no `terraform validate` since modules need a root caller)
+- Steps per env:
   1. `terraform fmt -check` — formatting check
-  2. `terraform validate` — syntax and consistency check
+  2. `terraform validate` — syntax and consistency (uses `-backend=false`, no Azure calls)
   3. `tflint` — deeper static analysis
 
 ### Plan

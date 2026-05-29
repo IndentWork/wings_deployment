@@ -92,3 +92,13 @@ jobs:
               --auth-mode login
             echo "Container $CONTAINER_NAME created."
           fi
+
+      - name: Ensure GitHub Environments exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for env in dev qa prod; do
+            gh api -X PUT repos/${{ github.repository }}/environments/$env \
+              --field wait_timer=0 \
+              --silent && echo "Environment $env ensured." || echo "Environment $env already exists."
+          done
