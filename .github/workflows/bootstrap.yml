@@ -95,7 +95,7 @@ jobs:
 
       - name: Ensure GitHub Environments exist
         env:
-          GH_TOKEN: ${{ secrets.GH_ADMIN_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           # dev — no approval required, auto-deploys
           gh api -X PUT repos/${{ github.repository }}/environments/dev \
