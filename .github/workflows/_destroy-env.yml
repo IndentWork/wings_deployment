@@ -1,0 +1,42 @@
+name: Destroy Environment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Environment to destroy (dev, qa, prod, sb)"
+        required: true
+        type: string
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_CLIENT_SECRET:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+
+jobs:
+  destroy:
+    name: Destroy ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init -backend-config=../../bootstrap/backend.hcl
+        working-directory: environments/${{ inputs.environment }}
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
+        working-directory: environments/${{ inputs.environment }}
