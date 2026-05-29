@@ -7,6 +7,7 @@ resource "azurerm_resource_group" "this" {
       project    = var.project
       env        = var.env
       managed_by = "terraform"
+      owner      = "indentwork"
     },
     var.tags
   )
