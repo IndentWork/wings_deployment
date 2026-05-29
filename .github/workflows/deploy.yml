@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 concurrency:
-  group: deploy-main
+  group: terraform-ops
   cancel-in-progress: false
 
 jobs:

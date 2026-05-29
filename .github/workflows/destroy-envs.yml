@@ -1,0 +1,41 @@
+name: Destroy Envs
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: terraform-ops
+  cancel-in-progress: false
+
+jobs:
+  destroy-dev:
+    uses: ./.github/workflows/_destroy-env.yml
+    with:
+      environment: dev
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+  destroy-qa:
+    uses: ./.github/workflows/_destroy-env.yml
+    with:
+      environment: qa
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+  destroy-prod:
+    uses: ./.github/workflows/_destroy-env.yml
+    with:
+      environment: prod
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
