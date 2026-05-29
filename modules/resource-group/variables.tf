@@ -24,7 +24,7 @@ variable "location" {
 }
 
 variable "tags" {
-  description = "Additional tags to apply to the resource group"
+  description = "Additional tags to merge into the resource group"
   type        = map(string)
   default     = {}
 }
