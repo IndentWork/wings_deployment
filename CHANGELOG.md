@@ -1,6 +1,73 @@
 # CHANGELOG
 
 
+## v0.2.0 (2026-05-29)
+
+### Bug Fixes
+
+- Add approval gates for qa/prod and plan stage on PR
+  ([#4](https://github.com/IndentWork/wings_deployment/pull/4),
+  [`c4b2577`](https://github.com/IndentWork/wings_deployment/commit/c4b2577383cf3543e3e76628ddfa5dd3584ae32c))
+
+- bootstrap: set required reviewers on qa and prod GitHub Environments using REQUIRED_REVIEWER org
+  variable; dev remains auto-deploy - validate: add plan-dev, plan-qa, plan-prod jobs after validate
+  so PRs show a full terraform plan before merge (informational; deploy re-plans on main after
+  merge)
+
+Co-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+- Add environments:write permission to bootstrap workflow
+  ([#6](https://github.com/IndentWork/wings_deployment/pull/6),
+  [`d71b4e1`](https://github.com/IndentWork/wings_deployment/commit/d71b4e11835c9fce1a212a28c944f69f05e605e4))
+
+GITHUB_TOKEN needs environments:write to call the GitHub Environments API — without it every PUT
+  /environments call returns 403.
+
+Co-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+- Use PAT for GitHub Environments API in bootstrap
+  ([#7](https://github.com/IndentWork/wings_deployment/pull/7),
+  [`73dca08`](https://github.com/IndentWork/wings_deployment/commit/73dca083d0a97e562c2f6029a2c5fc240d103dd8))
+
+* fix: use PAT for GitHub Environments API in bootstrap
+
+- Remove invalid environments:write permission (not a valid GITHUB_TOKEN scope — causes workflow to
+  fail before any job starts) - Switch Ensure GitHub Environments step to GH_ADMIN_TOKEN (classic
+  PAT with repo scope); GITHUB_TOKEN cannot call the Environments REST API
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+* chore: update tags variable description in resource-group module
+
+---------
+
+Co-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+### Features
+
+- Add managed_by=terraform tag to resource group
+  ([#5](https://github.com/IndentWork/wings_deployment/pull/5),
+  [`6463c88`](https://github.com/IndentWork/wings_deployment/commit/6463c889cfaac15ffaf8ab7619cb594cdbc38503))
+
+Co-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+### Refactoring
+
+- Auto-apply all envs sequentially, drop approval gates
+  ([#10](https://github.com/IndentWork/wings_deployment/pull/10),
+  [`9b92aec`](https://github.com/IndentWork/wings_deployment/commit/9b92aec2f691dfd82503f22f3cbf6f88b8b80e5d))
+
+* refactor: auto-apply all envs sequentially, drop approval gates
+
+- _apply-env.yml: remove environment: input — apply jobs no longer pause for approval. The existing
+  needs/if chain in deploy.yml already enforces sequential ordering: apply-dev -> apply-qa ->
+  apply-prod, with failure in one stage blocking the next. - bootstrap.yml: drop Ensure GitHub
+  Environments step — no longer needed now that we're not using GitHub Environments for approval.
+  Bootstrap is back to pure Azure infra (RG + storage + container).
+
+* feat: add owner=indentwork tag to resource group
+
+
 ## v0.1.0 (2026-05-29)
 
 ### Bug Fixes
