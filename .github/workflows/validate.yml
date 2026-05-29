@@ -1,0 +1,130 @@
+name: Validate
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      dev: ${{ steps.filter.outputs.dev }}
+      qa: ${{ steps.filter.outputs.qa }}
+      prod: ${{ steps.filter.outputs.prod }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            dev:
+              - 'environments/dev/**'
+              - 'modules/**'
+            qa:
+              - 'environments/qa/**'
+              - 'modules/**'
+            prod:
+              - 'environments/prod/**'
+              - 'modules/**'
+
+  validate-dev:
+    name: Validate dev
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.dev == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: environments/dev
+
+      - name: Terraform Init
+        run: terraform init -backend=false
+        working-directory: environments/dev
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: environments/dev
+
+      - uses: terraform-linters/setup-tflint@v4
+
+      - name: TFLint Init
+        run: tflint --init
+        working-directory: environments/dev
+
+      - name: TFLint
+        run: tflint
+        working-directory: environments/dev
+
+  validate-qa:
+    name: Validate qa
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.qa == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: environments/qa
+
+      - name: Terraform Init
+        run: terraform init -backend=false
+        working-directory: environments/qa
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: environments/qa
+
+      - uses: terraform-linters/setup-tflint@v4
+
+      - name: TFLint Init
+        run: tflint --init
+        working-directory: environments/qa
+
+      - name: TFLint
+        run: tflint
+        working-directory: environments/qa
+
+  validate-prod:
+    name: Validate prod
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.prod == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: environments/prod
+
+      - name: Terraform Init
+        run: terraform init -backend=false
+        working-directory: environments/prod
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: environments/prod
+
+      - uses: terraform-linters/setup-tflint@v4
+
+      - name: TFLint Init
+        run: tflint --init
+        working-directory: environments/prod
+
+      - name: TFLint
+        run: tflint
+        working-directory: environments/prod

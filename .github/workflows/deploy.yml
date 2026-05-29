@@ -1,0 +1,333 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["Bootstrap"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+env:
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+jobs:
+  version:
+    name: Version
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Python Semantic Release
+        id: release
+        uses: python-semantic-release/python-semantic-release@v9
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    needs: [version]
+
+    outputs:
+      dev: ${{ steps.filter.outputs.dev }}
+      qa: ${{ steps.filter.outputs.qa }}
+      prod: ${{ steps.filter.outputs.prod }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            dev:
+              - 'environments/dev/**'
+              - 'modules/**'
+            qa:
+              - 'environments/qa/**'
+              - 'modules/**'
+            prod:
+              - 'environments/prod/**'
+              - 'modules/**'
+
+  validate-dev:
+    name: Validate dev
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.dev == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: environments/dev
+
+      - name: Terraform Init
+        run: terraform init -backend=false
+        working-directory: environments/dev
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: environments/dev
+
+      - uses: terraform-linters/setup-tflint@v4
+
+      - name: TFLint Init
+        run: tflint --init
+        working-directory: environments/dev
+
+      - name: TFLint
+        run: tflint
+        working-directory: environments/dev
+
+  validate-qa:
+    name: Validate qa
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.qa == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: environments/qa
+
+      - name: Terraform Init
+        run: terraform init -backend=false
+        working-directory: environments/qa
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: environments/qa
+
+      - uses: terraform-linters/setup-tflint@v4
+
+      - name: TFLint Init
+        run: tflint --init
+        working-directory: environments/qa
+
+      - name: TFLint
+        run: tflint
+        working-directory: environments/qa
+
+  validate-prod:
+    name: Validate prod
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.prod == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: environments/prod
+
+      - name: Terraform Init
+        run: terraform init -backend=false
+        working-directory: environments/prod
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: environments/prod
+
+      - uses: terraform-linters/setup-tflint@v4
+
+      - name: TFLint Init
+        run: tflint --init
+        working-directory: environments/prod
+
+      - name: TFLint
+        run: tflint
+        working-directory: environments/prod
+
+  plan-dev:
+    name: Plan dev
+    runs-on: ubuntu-latest
+    needs: [detect-changes, validate-dev]
+    if: needs.validate-dev.result == 'success'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init -backend-config=../../bootstrap/backend.hcl
+        working-directory: environments/dev
+
+      - name: Terraform Plan
+        run: terraform plan -out=dev.tfplan
+        working-directory: environments/dev
+
+      - name: Upload Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-tfplan
+          path: environments/dev/dev.tfplan
+          retention-days: 1
+
+  plan-qa:
+    name: Plan qa
+    runs-on: ubuntu-latest
+    needs: [detect-changes, validate-qa]
+    if: needs.validate-qa.result == 'success'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init -backend-config=../../bootstrap/backend.hcl
+        working-directory: environments/qa
+
+      - name: Terraform Plan
+        run: terraform plan -out=qa.tfplan
+        working-directory: environments/qa
+
+      - name: Upload Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-tfplan
+          path: environments/qa/qa.tfplan
+          retention-days: 1
+
+  plan-prod:
+    name: Plan prod
+    runs-on: ubuntu-latest
+    needs: [detect-changes, validate-prod]
+    if: needs.validate-prod.result == 'success'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init -backend-config=../../bootstrap/backend.hcl
+        working-directory: environments/prod
+
+      - name: Terraform Plan
+        run: terraform plan -out=prod.tfplan
+        working-directory: environments/prod
+
+      - name: Upload Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-tfplan
+          path: environments/prod/prod.tfplan
+          retention-days: 1
+
+  apply-dev:
+    name: Apply dev
+    runs-on: ubuntu-latest
+    needs: [plan-dev]
+    if: needs.plan-dev.result == 'success'
+    environment: dev
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init -backend-config=../../bootstrap/backend.hcl
+        working-directory: environments/dev
+
+      - name: Download Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: dev-tfplan
+          path: environments/dev
+
+      - name: Terraform Apply
+        run: terraform apply dev.tfplan
+        working-directory: environments/dev
+
+  apply-qa:
+    name: Apply qa
+    runs-on: ubuntu-latest
+    needs: [apply-dev, plan-qa]
+    if: |
+      always() &&
+      needs.plan-qa.result == 'success' &&
+      (needs.apply-dev.result == 'success' || needs.apply-dev.result == 'skipped')
+    environment: qa
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init -backend-config=../../bootstrap/backend.hcl
+        working-directory: environments/qa
+
+      - name: Download Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: qa-tfplan
+          path: environments/qa
+
+      - name: Terraform Apply
+        run: terraform apply qa.tfplan
+        working-directory: environments/qa
+
+  apply-prod:
+    name: Apply prod
+    runs-on: ubuntu-latest
+    needs: [apply-qa, plan-prod]
+    if: |
+      always() &&
+      needs.plan-prod.result == 'success' &&
+      (needs.apply-qa.result == 'success' || needs.apply-qa.result == 'skipped')
+    environment: prod
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init -backend-config=../../bootstrap/backend.hcl
+        working-directory: environments/prod
+
+      - name: Download Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: prod-tfplan
+          path: environments/prod
+
+      - name: Terraform Apply
+        run: terraform apply prod.tfplan
+        working-directory: environments/prod
