@@ -1,6 +1,15 @@
 # CHANGELOG
 
 
+## v0.5.1 (2026-05-30)
+
+### Bug Fixes
+
+- Use per-environment concurrency groups instead of global terraform-ops
+  ([#15](https://github.com/IndentWork/wings_deployment/pull/15),
+  [`368f050`](https://github.com/IndentWork/wings_deployment/commit/368f0508f78ca4402e16fb794f01e2c1a0f6cf68))
+
+
 ## v0.5.0 (2026-05-30)
 
 ### Features
