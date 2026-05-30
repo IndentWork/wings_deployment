@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.5.0 (2026-05-30)
+
+### Features
+
+- Add postgres flexible server with private VNet access
+  ([#14](https://github.com/IndentWork/wings_deployment/pull/14),
+  [`3726328`](https://github.com/IndentWork/wings_deployment/commit/3726328fc7405f0d38e7c3e1213f25d3111c4dae))
+
+* feat: add network, key-vault and postgres-flexible modules for dev, qa and sb
+
+* fix: add missing required_version to sb environment
+
+
 ## v0.4.0 (2026-05-29)
 
 ### Chores
