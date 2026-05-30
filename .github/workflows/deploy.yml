@@ -6,10 +6,6 @@ on:
     types: [completed]
     branches: [main]
 
-concurrency:
-  group: terraform-ops
-  cancel-in-progress: false
-
 jobs:
   detect-changes:
     name: Detect Changes
@@ -132,6 +128,9 @@ jobs:
       AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
   apply-dev:
+    concurrency:
+      group: terraform-ops-dev
+      cancel-in-progress: false
     needs: [plan-dev]
     if: needs.plan-dev.result == 'success'
     uses: ./.github/workflows/_apply-env.yml
@@ -144,6 +143,9 @@ jobs:
       AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
   apply-qa:
+    concurrency:
+      group: terraform-ops-qa
+      cancel-in-progress: false
     needs: [apply-dev, plan-qa]
     if: |
       always() &&
@@ -159,6 +161,9 @@ jobs:
       AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
   apply-prod:
+    concurrency:
+      group: terraform-ops-prod
+      cancel-in-progress: false
     needs: [apply-qa, plan-prod]
     if: |
       always() &&
