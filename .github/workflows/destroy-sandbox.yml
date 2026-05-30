@@ -3,12 +3,11 @@ name: Destroy Sandbox
 on:
   workflow_dispatch:
 
-concurrency:
-  group: terraform-ops
-  cancel-in-progress: false
-
 jobs:
   destroy-sb:
+    concurrency:
+      group: terraform-ops-sb
+      cancel-in-progress: false
     uses: ./.github/workflows/_destroy-env.yml
     with:
       environment: sb
