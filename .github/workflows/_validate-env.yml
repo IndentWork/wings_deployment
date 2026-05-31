@@ -16,26 +16,44 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check environment is enabled
+        id: check
+        run: |
+          enabled=$(python3 -c "
+          import tomllib
+          with open('config.toml', 'rb') as f:
+              c = tomllib.load(f)
+          print('true' if '${{ inputs.environment }}' in c['environments']['enabled'] else 'false')
+          ")
+          echo "enabled=$enabled" >> $GITHUB_OUTPUT
+
       - uses: hashicorp/setup-terraform@v3
+        if: steps.check.outputs.enabled == 'true'
 
       - name: Terraform Format Check
+        if: steps.check.outputs.enabled == 'true'
         run: terraform fmt -check -recursive
         working-directory: environments/${{ inputs.environment }}
 
       - name: Terraform Init
+        if: steps.check.outputs.enabled == 'true'
         run: terraform init -backend=false
         working-directory: environments/${{ inputs.environment }}
 
       - name: Terraform Validate
+        if: steps.check.outputs.enabled == 'true'
         run: terraform validate
         working-directory: environments/${{ inputs.environment }}
 
       - uses: terraform-linters/setup-tflint@v4
+        if: steps.check.outputs.enabled == 'true'
 
       - name: TFLint Init
+        if: steps.check.outputs.enabled == 'true'
         run: tflint --init
         working-directory: environments/${{ inputs.environment }}
 
       - name: TFLint
+        if: steps.check.outputs.enabled == 'true'
         run: tflint
         working-directory: environments/${{ inputs.environment }}

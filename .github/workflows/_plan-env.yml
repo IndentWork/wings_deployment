@@ -31,17 +31,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check environment is enabled
+        id: check
+        run: |
+          enabled=$(python3 -c "
+          import tomllib
+          with open('config.toml', 'rb') as f:
+              c = tomllib.load(f)
+          print('true' if '${{ inputs.environment }}' in c['environments']['enabled'] else 'false')
+          ")
+          echo "enabled=$enabled" >> $GITHUB_OUTPUT
+
       - uses: hashicorp/setup-terraform@v3
+        if: steps.check.outputs.enabled == 'true'
 
       - name: Terraform Init
+        if: steps.check.outputs.enabled == 'true'
         run: terraform init -backend-config=../../bootstrap/backend.hcl
         working-directory: environments/${{ inputs.environment }}
 
       - name: Terraform Plan
+        if: steps.check.outputs.enabled == 'true'
         run: terraform plan -out=${{ inputs.environment }}.tfplan
         working-directory: environments/${{ inputs.environment }}
 
       - name: Upload Plan
+        if: steps.check.outputs.enabled == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.environment }}-tfplan
