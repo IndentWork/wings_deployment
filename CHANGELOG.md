@@ -1,6 +1,20 @@
 # CHANGELOG
 
 
+## v0.5.2 (2026-05-31)
+
+### Bug Fixes
+
+- Key Vault soft-delete + environment enable switch
+  ([#16](https://github.com/IndentWork/wings_deployment/pull/16),
+  [`b8613f0`](https://github.com/IndentWork/wings_deployment/commit/b8613f0a964e42c0cb81193002c4593ab1f6c3c4))
+
+* fix: per-env Key Vault soft-delete, environment enable switch via config.toml, bring qa/prod to
+  full module parity
+
+* fix: terraform fmt on key-vault module
+
+
 ## v0.5.1 (2026-05-30)
 
 ### Bug Fixes
