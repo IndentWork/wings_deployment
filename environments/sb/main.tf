@@ -50,11 +50,13 @@ module "network" {
 }
 
 module "key_vault" {
-  source              = "../../modules/key-vault"
-  project             = var.project
-  env                 = var.env
-  location            = module.resource_group.location
-  resource_group_name = module.resource_group.name
+  source                     = "../../modules/key-vault"
+  project                    = var.project
+  env                        = var.env
+  location                   = module.resource_group.location
+  resource_group_name        = module.resource_group.name
+  soft_delete_retention_days = var.kv_soft_delete_retention_days
+  purge_protection_enabled   = var.kv_purge_protection_enabled
 }
 
 module "postgres" {
