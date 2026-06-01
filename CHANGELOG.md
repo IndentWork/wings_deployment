@@ -1,6 +1,15 @@
 # CHANGELOG
 
 
+## v0.5.3 (2026-06-01)
+
+### Bug Fixes
+
+- Purge soft-deleted Key Vault before apply for non-prod environments
+  ([#17](https://github.com/IndentWork/wings_deployment/pull/17),
+  [`48a38d4`](https://github.com/IndentWork/wings_deployment/commit/48a38d4520f860891fe69733597bc4634b919b0c))
+
+
 ## v0.5.2 (2026-05-31)
 
 ### Bug Fixes
