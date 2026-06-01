@@ -1,6 +1,15 @@
 # CHANGELOG
 
 
+## v0.5.5 (2026-06-01)
+
+### Refactoring
+
+- Add iw org prefix to bootstrap and all module resource names
+  ([#19](https://github.com/IndentWork/wings_deployment/pull/19),
+  [`1f954da`](https://github.com/IndentWork/wings_deployment/commit/1f954dae003937d9802a19637169a6ea5a8bcdb7))
+
+
 ## v0.5.4 (2026-06-01)
 
 ### Bug Fixes
