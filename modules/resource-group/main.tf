@@ -1,5 +1,5 @@
 resource "azurerm_resource_group" "this" {
-  name     = "${var.component}-${var.project}-${var.env}"
+  name     = "${var.component}-${var.org}-${var.project}-${var.env}"
   location = var.location
 
   tags = merge(

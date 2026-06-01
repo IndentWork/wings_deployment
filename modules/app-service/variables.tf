@@ -1,3 +1,9 @@
+variable "org" {
+  description = "Organization slug used in resource naming"
+  type        = string
+  default     = "iw"
+}
+
 variable "project" {
   description = "Project name"
   type        = string

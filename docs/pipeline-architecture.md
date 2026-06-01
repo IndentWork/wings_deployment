@@ -103,8 +103,8 @@ A change in `modules/` potentially affects every environment that calls that mod
 - Runs: always (idempotent)
 - Checks if `bootstrap/backend.hcl` exists — creates and commits it if not
 - Reads `backend.hcl` and ensures Azure resources exist:
-  - Resource group (`rg-wings-bootstrap`)
-  - Storage account (`storagewings001`)
+  - Resource group (`rg-iw-wings-bootstrap`)
+  - Storage account (`storageiwwings001`)
   - Blob container (`tfstate`)
 
 ### Version
@@ -150,8 +150,8 @@ All environments share the same Azure Storage backend. Each env uses its own sta
 
 `bootstrap/backend.hcl` (written by bootstrap, committed to main):
 ```hcl
-resource_group_name  = "rg-wings-bootstrap"
-storage_account_name = "storagewings001"
+resource_group_name  = "rg-iw-wings-bootstrap"
+storage_account_name = "storageiwwings001"
 container_name       = "tfstate"
 ```
 
@@ -192,9 +192,9 @@ terraform init -backend-config=../../bootstrap/backend.hcl
 
 | Resource | Example |
 |---|---|
-| Resource group | `rg-wings-dev` |
-| App Service | `app-wings-dev` |
-| Postgres | `psql-wings-dev` |
-| Storage account | `storagewings001` (shared, no env suffix) |
+| Resource group | `rg-iw-wings-dev` |
+| App Service | `app-iw-wings-dev` |
+| Postgres | `psql-iw-wings-dev` |
+| Storage account | `storageiwwings001` (shared, no env suffix) |
 
 Project name (`wings`) is a Terraform variable — change it in one place to rename across all resources.

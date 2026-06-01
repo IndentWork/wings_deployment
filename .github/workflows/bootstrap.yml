@@ -31,8 +31,8 @@ jobs:
           if [ ! -f bootstrap/backend.hcl ]; then
             echo "backend.hcl not found, creating..."
             cat > bootstrap/backend.hcl <<EOF
-          resource_group_name  = "rg-wings-bootstrap"
-          storage_account_name = "storagewings001"
+          resource_group_name  = "rg-iw-wings-bootstrap"
+          storage_account_name = "storageiwwings001"
           container_name       = "tfstate"
           EOF
             git config user.name "github-actions[bot]"
