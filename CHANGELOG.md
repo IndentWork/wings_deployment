@@ -1,6 +1,15 @@
 # CHANGELOG
 
 
+## v0.5.4 (2026-06-01)
+
+### Bug Fixes
+
+- Use azurerm provider key_vault features to handle soft-delete automatically
+  ([#18](https://github.com/IndentWork/wings_deployment/pull/18),
+  [`22de342`](https://github.com/IndentWork/wings_deployment/commit/22de342b0619b9520556a5d6741bfd5903702e10))
+
+
 ## v0.5.3 (2026-06-01)
 
 ### Bug Fixes
