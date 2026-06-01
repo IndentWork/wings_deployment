@@ -1,6 +1,15 @@
 # CHANGELOG
 
 
+## v0.6.0 (2026-06-01)
+
+### Features
+
+- Add web-app module and wire into dev environment
+  ([#20](https://github.com/IndentWork/wings_deployment/pull/20),
+  [`61ec64e`](https://github.com/IndentWork/wings_deployment/commit/61ec64e0f256ea86df0ce67511f985e562c2133d))
+
+
 ## v0.5.5 (2026-06-01)
 
 ### Refactoring
