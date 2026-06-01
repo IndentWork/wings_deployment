@@ -1,3 +1,3 @@
-resource_group_name  = "rg-wings-bootstrap"
-storage_account_name = "storagewings001"
+resource_group_name  = "rg-iw-wings-bootstrap"
+storage_account_name = "storageiwwings001"
 container_name       = "tfstate"

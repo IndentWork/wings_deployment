@@ -103,11 +103,11 @@ Resource Group
 
 | Resource | Pattern | Example (dev) |
 |---|---|---|
-| VNet | `vnet-{project}-{env}` | `vnet-wings-dev` |
-| Postgres subnet | `snet-postgres-{project}-{env}` | `snet-postgres-wings-dev` |
-| App subnet | `snet-app-{project}-{env}` | `snet-app-wings-dev` |
-| Key Vault | `kv-{project}-{env}` | `kv-wings-dev` |
-| Postgres server | `psql-{project}-{env}` | `psql-wings-dev` |
+| VNet | `vnet-{org}-{project}-{env}` | `vnet-iw-wings-dev` |
+| Postgres subnet | `snet-postgres-{org}-{project}-{env}` | `snet-postgres-iw-wings-dev` |
+| App subnet | `snet-app-{org}-{project}-{env}` | `snet-app-iw-wings-dev` |
+| Key Vault | `kv-{org}-{project}-{env}` | `kv-iw-wings-dev` |
+| Postgres server | `psql-{org}-{project}-{env}` | `psql-iw-wings-dev` |
 | KV secret (pg password) | `postgres-admin-password` | — |
 
 **Note:** Key Vault names must be globally unique, 3–24 chars, alphanumeric + hyphens only.

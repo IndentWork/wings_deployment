@@ -11,7 +11,7 @@ locals {
 }
 
 resource "azurerm_virtual_network" "this" {
-  name                = "vnet-${var.project}-${var.env}"
+  name                = "vnet-${var.org}-${var.project}-${var.env}"
   location            = var.location
   resource_group_name = var.resource_group_name
   address_space       = var.vnet_address_space
@@ -19,7 +19,7 @@ resource "azurerm_virtual_network" "this" {
 }
 
 resource "azurerm_subnet" "postgres" {
-  name                 = "snet-postgres-${var.project}-${var.env}"
+  name                 = "snet-postgres-${var.org}-${var.project}-${var.env}"
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.this.name
   address_prefixes     = [var.postgres_subnet_cidr]
@@ -37,7 +37,7 @@ resource "azurerm_subnet" "postgres" {
 }
 
 resource "azurerm_subnet" "app" {
-  name                 = "snet-app-${var.project}-${var.env}"
+  name                 = "snet-app-${var.org}-${var.project}-${var.env}"
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.this.name
   address_prefixes     = [var.app_subnet_cidr]
@@ -61,7 +61,7 @@ resource "azurerm_private_dns_zone" "postgres" {
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "postgres" {
-  name                  = "dnslink-${var.project}-${var.env}"
+  name                  = "dnslink-${var.org}-${var.project}-${var.env}"
   resource_group_name   = var.resource_group_name
   private_dns_zone_name = azurerm_private_dns_zone.postgres.name
   virtual_network_id    = azurerm_virtual_network.this.id

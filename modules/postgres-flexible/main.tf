@@ -23,7 +23,7 @@ resource "azurerm_key_vault_secret" "postgres_password" {
 }
 
 resource "azurerm_postgresql_flexible_server" "this" {
-  name                   = "psql-${var.project}-${var.env}"
+  name                   = "psql-${var.org}-${var.project}-${var.env}"
   location               = var.location
   resource_group_name    = var.resource_group_name
   version                = var.postgres_version
