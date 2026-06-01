@@ -28,3 +28,21 @@ variable "kv_purge_protection_enabled" {
   default     = false
 }
 
+variable "image_version" {
+  description = "Wings Docker image version to deploy. Promoted manually via PR."
+  type        = string
+  default     = "latest"
+}
+
+variable "acr_name" {
+  description = "Container registry name (created by wings/ bootstrap)"
+  type        = string
+  default     = "acriwwings01"
+}
+
+variable "acr_resource_group_name" {
+  description = "Resource group containing the ACR (created by wings/ bootstrap)"
+  type        = string
+  default     = "rg-iw-wings-bootstrap"
+}
+

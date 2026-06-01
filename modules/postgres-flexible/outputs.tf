@@ -17,3 +17,9 @@ output "password_secret_name" {
   description = "Key Vault secret name holding the admin password"
   value       = azurerm_key_vault_secret.postgres_password.name
 }
+
+output "administrator_password" {
+  description = "Admin password — passed to web-app to construct DATABASE_URL"
+  value       = random_password.admin.result
+  sensitive   = true
+}
