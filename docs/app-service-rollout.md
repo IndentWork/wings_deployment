@@ -66,9 +66,97 @@ Create `modules/web-app/` that:
 - ACR rename: `acrwings01` → `acriwwings01`
 - Build pipeline pushes to new ACR
 
-### Pending — Phase 4
+### Pending — Phase 4 (next session)
 
-Not started. Separate branch.
+**Goal:** Full CI/CD blue-green. Every deploy goes to staging slot first, gets health-checked, then swaps to production. Zero manual `az` commands.
+
+**The flow:**
+```
+Code change in wings/ → image built and pushed to ACR (v0.5.0)
+              ↓
+PR in wings_deployment/ bumps image_version, merged
+              ↓
+Deploy pipeline runs:
+  1. terraform apply — infra changes (NOT image)
+  2. az webapp config container set --slot staging --image wings:0.5.0
+  3. Wait + health check on https://app-iw-wings-dev-staging.azurewebsites.net
+  4. az webapp deployment slot swap
+              ↓
+Production now runs v0.5.0. Old v0.4.0 sits in staging (instant rollback ready).
+```
+
+**Terraform changes (`modules/web-app/main.tf`):**
+- Add `azurerm_linux_web_app_slot` named `staging`
+- Slot needs:
+  - Its own `identity { type = "SystemAssigned" }` block
+  - Same VNet integration via `virtual_network_subnet_id`
+  - Same `app_settings` map as the main web app
+  - Same `container_registry_use_managed_identity = true`
+- **Critical:** Add `lifecycle { ignore_changes = [site_config[0].application_stack] }` on **both** the main web app AND the staging slot — so Terraform doesn't fight with CI/CD over image versions
+- Add `azurerm_key_vault_access_policy` granting the slot's identity `Get`/`List` on Key Vault
+- Add `azurerm_role_assignment` granting the slot's identity `AcrPull` on ACR
+
+**Pipeline changes (`.github/workflows/_apply-env.yml`):**
+
+After the existing `Terraform Apply` step, add three new steps (all guarded by `if: steps.check.outputs.enabled == 'true'`):
+
+1. **Set staging slot image:**
+   ```yaml
+   - name: Set staging slot image
+     run: |
+       az webapp config container set \
+         --name app-iw-${{ inputs.environment == 'sb' && 'wings-sb' || format('wings-{0}', inputs.environment) }} \
+         --resource-group rg-iw-wings-${{ inputs.environment }} \
+         --slot staging \
+         --container-image-name acriwwings01.azurecr.io/wings:${{ env.IMAGE_VERSION }}
+   ```
+
+2. **Health check staging:**
+   ```yaml
+   - name: Health check staging slot
+     run: |
+       URL=https://app-iw-wings-${{ inputs.environment }}-staging.azurewebsites.net
+       for i in $(seq 1 30); do
+         if curl -sf -o /dev/null -w "%{http_code}" $URL | grep -q "200"; then
+           echo "Staging healthy"; exit 0
+         fi
+         echo "Attempt $i: not ready, retry in 10s"; sleep 10
+       done
+       echo "Staging never became healthy"; exit 1
+   ```
+
+3. **Swap slots:**
+   ```yaml
+   - name: Swap staging to production
+     run: |
+       az webapp deployment slot swap \
+         --name app-iw-wings-${{ inputs.environment }} \
+         --resource-group rg-iw-wings-${{ inputs.environment }} \
+         --slot staging \
+         --target-slot production
+   ```
+
+**First-deploy bootstrap:**
+The very first deploy ever — production slot has no image yet. Options:
+- (a) **Preferred:** Pipeline detects "no image set on production yet" and does direct deploy to production for first deploy. Use `az webapp config container show` to check.
+- (b) **Simpler:** Manually set the production image once via az CLI, then the staging-then-swap flow handles everything from then on.
+
+**One subtle thing:**
+- App settings that point to env-specific resources (DATABASE_URL, Key Vault refs) should be marked as **slot settings** (sticky to the slot) so they don't swap when slots swap. Both slots talk to the same DB — they shouldn't trade DB URLs.
+- In Terraform: `sticky_settings { app_setting_names = ["DATABASE_URL", "ALLOWED_HOSTS"] }` on the main web app.
+
+**Test plan:**
+- [ ] Terraform creates both slots; both run the current production image initially
+- [ ] Manual test: push new image version, watch pipeline deploy to staging, swap, production now runs new version
+- [ ] Manual rollback test: `az webapp deployment slot swap` again → production reverts to previous version
+
+**Estimated changes:**
+- 1 new resource block in `modules/web-app/main.tf` (~30 lines for the slot)
+- 2 new resource blocks for slot's KV access + AcrPull
+- `lifecycle { ignore_changes }` block on both web app and slot
+- 1 `sticky_settings` block
+- 3 new steps in `_apply-env.yml`
+- Total: ~80 lines across 2 files
 
 ## What still might break — open items
 

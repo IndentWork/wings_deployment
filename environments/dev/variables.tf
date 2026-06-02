@@ -29,9 +29,9 @@ variable "kv_purge_protection_enabled" {
 }
 
 variable "image_version" {
-  description = "Wings Docker image version to deploy. Promoted manually via PR."
+  description = "Wings Docker image version to deploy. Promoted manually via PR — never use 'latest', the deploy pipeline compares version strings to decide whether to swap."
   type        = string
-  default     = "latest"
+  default     = "0.6.1"
 }
 
 variable "acr_name" {

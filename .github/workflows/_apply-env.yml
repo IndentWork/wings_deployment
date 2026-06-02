@@ -61,3 +61,101 @@ jobs:
         if: steps.check.outputs.enabled == 'true'
         run: terraform apply ${{ inputs.environment }}.tfplan
         working-directory: environments/${{ inputs.environment }}
+
+      # --- Blue-green image deployment ---
+
+      - name: Read terraform outputs
+        if: steps.check.outputs.enabled == 'true'
+        id: tf
+        run: |
+          version=$(terraform output -raw image_version)
+          app_name=$(terraform output -raw web_app_name)
+          rg=$(terraform output -raw resource_group_name)
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "app_name=$app_name" >> $GITHUB_OUTPUT
+          echo "rg=$rg" >> $GITHUB_OUTPUT
+          echo "Resolved: app=$app_name rg=$rg version=$version"
+        working-directory: environments/${{ inputs.environment }}
+
+      - uses: azure/login@v2
+        if: steps.check.outputs.enabled == 'true'
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}"}'
+
+      - name: Detect deploy mode
+        if: steps.check.outputs.enabled == 'true'
+        id: mode
+        env:
+          APP_NAME: ${{ steps.tf.outputs.app_name }}
+          RG: ${{ steps.tf.outputs.rg }}
+          INTENDED: acriwwings01.azurecr.io/wings:${{ steps.tf.outputs.version }}
+        run: |
+          current=$(az webapp config container show \
+            --name "$APP_NAME" --resource-group "$RG" \
+            --query "[?name=='DOCKER_CUSTOM_IMAGE_NAME'].value | [0]" -o tsv 2>/dev/null || echo "")
+
+          current_image=$(echo "$current" | sed -E 's|^https?://||')
+
+          echo "Current production image: ${current_image:-<none>}"
+          echo "Intended image:           $INTENDED"
+
+          if [ -z "$current_image" ]; then
+            echo "mode=bootstrap" >> $GITHUB_OUTPUT
+            echo "First-deploy bootstrap: set image on production directly"
+          elif [ "$current_image" = "$INTENDED" ]; then
+            echo "mode=skip" >> $GITHUB_OUTPUT
+            echo "Production already runs the intended image; nothing to deploy"
+          else
+            echo "mode=swap" >> $GITHUB_OUTPUT
+            echo "Blue-green deploy: staging → swap"
+          fi
+
+      - name: Bootstrap deploy — set production image directly
+        if: steps.check.outputs.enabled == 'true' && steps.mode.outputs.mode == 'bootstrap'
+        env:
+          APP_NAME: ${{ steps.tf.outputs.app_name }}
+          RG: ${{ steps.tf.outputs.rg }}
+          IMAGE: acriwwings01.azurecr.io/wings:${{ steps.tf.outputs.version }}
+        run: |
+          az webapp config container set \
+            --name "$APP_NAME" --resource-group "$RG" \
+            --container-image-name "$IMAGE"
+
+      - name: Blue-green — set staging image
+        if: steps.check.outputs.enabled == 'true' && steps.mode.outputs.mode == 'swap'
+        env:
+          APP_NAME: ${{ steps.tf.outputs.app_name }}
+          RG: ${{ steps.tf.outputs.rg }}
+          IMAGE: acriwwings01.azurecr.io/wings:${{ steps.tf.outputs.version }}
+        run: |
+          az webapp config container set \
+            --name "$APP_NAME" --resource-group "$RG" \
+            --slot staging \
+            --container-image-name "$IMAGE"
+
+      - name: Blue-green — health check staging
+        if: steps.check.outputs.enabled == 'true' && steps.mode.outputs.mode == 'swap'
+        env:
+          STAGING_URL: https://${{ steps.tf.outputs.app_name }}-staging.azurewebsites.net
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" "$STAGING_URL/" || echo "000")
+            echo "Attempt $i: HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "Staging healthy"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Staging never returned 200"
+          exit 1
+
+      - name: Blue-green — swap staging into production
+        if: steps.check.outputs.enabled == 'true' && steps.mode.outputs.mode == 'swap'
+        env:
+          APP_NAME: ${{ steps.tf.outputs.app_name }}
+          RG: ${{ steps.tf.outputs.rg }}
+        run: |
+          az webapp deployment slot swap \
+            --name "$APP_NAME" --resource-group "$RG" \
+            --slot staging --target-slot production
