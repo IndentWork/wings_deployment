@@ -1,6 +1,15 @@
 # CHANGELOG
 
 
+## v0.7.0 (2026-06-02)
+
+### Features
+
+- Add deployment slot with blue-green CI/CD
+  ([#22](https://github.com/IndentWork/wings_deployment/pull/22),
+  [`505585d`](https://github.com/IndentWork/wings_deployment/commit/505585d77ef08ad835df621c2d2446eece1d8e87))
+
+
 ## v0.6.1 (2026-06-02)
 
 ### Bug Fixes
