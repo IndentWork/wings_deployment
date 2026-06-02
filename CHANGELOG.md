@@ -1,6 +1,20 @@
 # CHANGELOG
 
 
+## v0.7.1 (2026-06-02)
+
+### Bug Fixes
+
+- Correct dev image version and harden blue-green deploy
+  ([#23](https://github.com/IndentWork/wings_deployment/pull/23),
+  [`cdcaea3`](https://github.com/IndentWork/wings_deployment/commit/cdcaea33f67438e58a24c3d3bfb20df5dfda754b))
+
+- Set image_version to 0.5.0 (0.6.1 does not exist in ACR) - Add bootstrap-staging mode: when
+  staging slot has no image yet, set image on both slots directly and skip health check, avoiding
+  RBAC propagation failures on first boot of a new slot - Add --max-time 30 to curl in health check
+  so 504 responses do not block each attempt for several minutes
+
+
 ## v0.7.0 (2026-06-02)
 
 ### Features
