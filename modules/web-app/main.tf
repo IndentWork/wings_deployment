@@ -45,7 +45,8 @@ resource "azurerm_linux_web_app" "this" {
       docker_image_name   = "${var.image_name}:${var.image_version}"
       docker_registry_url = "https://${var.acr_login_server}"
     }
-    always_on = true
+    always_on                               = true
+    container_registry_use_managed_identity = true
   }
 
   app_settings = {
