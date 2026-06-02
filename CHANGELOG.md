@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.8.0 (2026-06-02)
+
+### Features
+
+- Deploy wings 0.6.0 to dev ([#24](https://github.com/IndentWork/wings_deployment/pull/24),
+  [`eae5b23`](https://github.com/IndentWork/wings_deployment/commit/eae5b238da9eecc7471ef399b1c5cc83f4fc5979))
+
+
 ## v0.7.1 (2026-06-02)
 
 ### Bug Fixes
