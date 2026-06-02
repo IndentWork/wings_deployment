@@ -1,6 +1,15 @@
 # CHANGELOG
 
 
+## v0.6.1 (2026-06-02)
+
+### Bug Fixes
+
+- Enable container_registry_use_managed_identity so App Service can pull from ACR
+  ([#21](https://github.com/IndentWork/wings_deployment/pull/21),
+  [`e4fa38c`](https://github.com/IndentWork/wings_deployment/commit/e4fa38c9001256b3766eabf248406e5f666349fe))
+
+
 ## v0.6.0 (2026-06-01)
 
 ### Features
