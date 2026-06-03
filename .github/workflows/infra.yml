@@ -9,14 +9,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  # validate-modules runs in parallel — it's a static quality check on
-  # the shared modules. It does not gate the per-env chain; each env's
-  # validate → plan → apply runs independently. Per-env "is this env
-  # enabled?" gating happens inside the reusable workflows via
-  # config.toml.
+  # Step 1: validate shared modules first. Gates all per-env work.
   validate-modules:
     name: Validate modules
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
 
     steps:
       - uses: actions/checkout@v4
@@ -37,21 +34,29 @@ jobs:
         run: tflint --recursive
         working-directory: modules
 
+  # Step 2: per-env validate runs in parallel once modules are clean.
   validate-dev:
+    needs: [validate-modules]
+    if: needs.validate-modules.result == 'success'
     uses: ./.github/workflows/_validate-env.yml
     with:
       environment: dev
 
   validate-qa:
+    needs: [validate-modules]
+    if: needs.validate-modules.result == 'success'
     uses: ./.github/workflows/_validate-env.yml
     with:
       environment: qa
 
   validate-prod:
+    needs: [validate-modules]
+    if: needs.validate-modules.result == 'success'
     uses: ./.github/workflows/_validate-env.yml
     with:
       environment: prod
 
+  # Step 3: per-env plan, each gated on its own validate.
   plan-dev:
     needs: [validate-dev]
     if: needs.validate-dev.result == 'success'
@@ -88,6 +93,7 @@ jobs:
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+  # Step 4: per-env apply, each gated on its own plan.
   apply-dev:
     concurrency:
       group: terraform-ops-dev

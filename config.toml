@@ -3,4 +3,4 @@
 # skip any environment not in this list (the job still passes — it just does nothing).
 # Destroy pipelines are not affected and always run for all environments.
 # To enable an environment, add it to this list and open a PR.
-enabled = ["dev", "sb", "prod"]
+enabled = ["dev"]
