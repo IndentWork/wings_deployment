@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v0.11.0 (2026-06-03)
+
+### Features
+
+- Allow deploy workflow to be triggered manually
+  ([#27](https://github.com/IndentWork/wings_deployment/pull/27),
+  [`cb851d1`](https://github.com/IndentWork/wings_deployment/commit/cb851d13d143b619b9b362b8e4e6cf1b694542df))
+
+Add workflow_dispatch trigger to deploy.yml so the validate -> plan -> apply chain can be re-run
+  manually without pushing a commit. The existing workflow_run trigger from Version is unchanged.
+
+- Widen detect-changes if: condition to also pass on workflow_dispatch, since
+  github.event.workflow_run is absent in that case. - Fall back run-name to 'manual by <actor>' when
+  no upstream commit message is available.
+
+
 ## v0.10.0 (2026-06-03)
 
 ### Features
