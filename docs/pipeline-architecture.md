@@ -62,27 +62,24 @@ The two pipelines triggered by a push to main do fundamentally different work:
 |---|---|---|
 | What it changes | Azure resources (RG, Postgres, VNet, KV, App Service shell) | Docker image running in the App Service slots |
 | How it changes things | `terraform apply` | `az webapp config container set` + `az webapp deployment slot swap` |
-| Triggered by | Any change under `environments/<env>/**` (except `image.tfvars`) or under `modules/**` | Any change to `environments/<env>/image.tfvars` |
-| Typical rhythm | Rare — weeks/months | Frequent — every app release |
+| Trigger gate | Always runs (for all enabled envs) when Version completes or manually dispatched | Path filter on `environments/<env>/image.tfvars` — only the changed envs run |
+| Typical rhythm | Idempotent — usually a no-op since terraform code rarely changes | Frequent — every app release |
 
-A PR that bumps `image.tfvars` and nothing else will run `image.yml` only. A PR that adds a module will run `infra.yml` only. A PR that does both will run both — `image.yml` chains after `infra.yml` via `workflow_run`.
+### Why infra runs unconditionally
+
+`terraform plan` + `apply` is idempotent. If no terraform code changed, plan finds no diff and apply is a fast no-op. If the env's infrastructure has been destroyed (e.g., by the `destroy-envs` cron), plan finds the gap and apply recreates it.
+
+Gating infra on path filters would skip envs that need to be recreated after a destroy. Running it unconditionally is the simpler, self-healing choice.
+
+### Why image is path-filtered
+
+Image deployment is not idempotent in the same way — it sets the slot image, polls health, and swaps. We only want to do that when `image.tfvars` actually changed. A PR that doesn't bump `image_version` shouldn't restart slots or trigger health checks.
 
 ---
 
 ## Path-Based Triggering
 
-`detect-changes` jobs in `infra.yml` and `image.yml` decide which envs need to run.
-
-### `infra.yml` filters
-
-```yaml
-modules:  ['modules/**']
-dev:      ['environments/dev/**',  '!environments/dev/image.tfvars',  'modules/**']
-qa:       ['environments/qa/**',   '!environments/qa/image.tfvars',   'modules/**']
-prod:     ['environments/prod/**', '!environments/prod/image.tfvars', 'modules/**']
-```
-
-The `!image.tfvars` exclusion is what keeps image-version bumps out of `infra.yml`.
+Only `image.yml` uses path filters. `infra.yml` has no `detect-changes` job — it runs validate → plan → apply for all enabled envs every time it's triggered.
 
 ### `image.yml` filters
 
@@ -96,15 +93,14 @@ prod: ['environments/prod/image.tfvars']
 
 | What changed | infra-dev | infra-qa | infra-prod | image-dev | image-qa | image-prod |
 |---|---|---|---|---|---|---|
-| `environments/dev/main.tf` | ✅ | ⏭️ | ⏭️ | ⏭️ | ⏭️ | ⏭️ |
-| `environments/dev/image.tfvars` | ⏭️ | ⏭️ | ⏭️ | ✅ | ⏭️ | ⏭️ |
+| `environments/dev/main.tf` | ✅ (no-op or applies the change) | ✅ (no-op) | ✅ (no-op) | ⏭️ | ⏭️ | ⏭️ |
+| `environments/dev/image.tfvars` | ✅ (no-op) | ✅ (no-op) | ✅ (no-op) | ✅ | ⏭️ | ⏭️ |
 | `modules/web-app/main.tf` | ✅ | ✅ | ✅ | ⏭️ | ⏭️ | ⏭️ |
-| `environments/sb/**` | ⏭️ | ⏭️ | ⏭️ | ⏭️ | ⏭️ | ⏭️ |
-| `bootstrap/**` or `.github/**` | ⏭️ | ⏭️ | ⏭️ | ⏭️ | ⏭️ | ⏭️ |
+| `environments/sb/**` | ✅ (no-op for dev/qa/prod) | ✅ (no-op) | ✅ (no-op) | ⏭️ | ⏭️ | ⏭️ |
+| `bootstrap/**` or `.github/**` | ✅ (no-op) | ✅ (no-op) | ✅ (no-op) | ⏭️ | ⏭️ | ⏭️ |
+| Nothing on env / module side (e.g. README) | ✅ (no-op) | ✅ (no-op) | ✅ (no-op) | ⏭️ | ⏭️ | ⏭️ |
 
-### Why modules trigger all envs
-
-A change in `modules/` potentially affects every environment that calls that module. Even if a new module is added but not yet wired into any env, `terraform plan` will return "No changes" for envs that don't use it — safe and expected.
+"No-op" means terraform plan reports no changes and apply does nothing — fast and safe. The cost is one terraform init + plan per env per push.
 
 ---
 
@@ -155,13 +151,13 @@ A change in `modules/` potentially affects every environment that calls that mod
 
 ### Infra
 
-- Triggered by Version completion (or manual dispatch)
-- `detect-changes` per env (excluding `image.tfvars`)
-- `validate-modules` if `modules/**` changed (fmt + tflint — no `terraform validate` since modules need a root caller)
-- Per affected env (in parallel):
+- Triggered by Version completion or manual dispatch
+- `validate-modules` runs in parallel as a static quality check (fmt + tflint on `modules/`) — does **not** gate the per-env chain
+- Per env (in parallel), unconditionally:
   1. `_validate-env.yml` — fmt + init `-backend=false` + validate + tflint
   2. `_plan-env.yml` — init + `terraform plan -var-file=image.tfvars -out=<env>.tfplan` + upload artifact
   3. `_apply-env.yml` — init + download plan + `terraform apply <env>.tfplan`
+- The only env-level gate is `config.toml`'s `enabled` list, checked inside each reusable workflow. An env not in the list skips its validate/plan/apply steps cleanly.
 
 ### Image
 
