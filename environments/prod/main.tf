@@ -55,11 +55,13 @@ module "network" {
 }
 
 module "key_vault" {
-  source              = "../../modules/key-vault"
-  project             = var.project
-  env                 = var.env
-  location            = module.resource_group.location
-  resource_group_name = module.resource_group.name
+  source                     = "../../modules/key-vault"
+  project                    = var.project
+  env                        = var.env
+  location                   = module.resource_group.location
+  resource_group_name        = module.resource_group.name
+  soft_delete_retention_days = var.kv_soft_delete_retention_days
+  purge_protection_enabled   = var.kv_purge_protection_enabled
 }
 
 module "postgres" {
@@ -71,4 +73,26 @@ module "postgres" {
   delegated_subnet_id = module.network.postgres_subnet_id
   private_dns_zone_id = module.network.private_dns_zone_id
   key_vault_id        = module.key_vault.vault_id
+}
+
+data "azurerm_container_registry" "acr" {
+  name                = var.acr_name
+  resource_group_name = var.acr_resource_group_name
+}
+
+module "web_app" {
+  source                  = "../../modules/web-app"
+  project                 = var.project
+  env                     = var.env
+  location                = module.resource_group.location
+  resource_group_name     = module.resource_group.name
+  app_service_plan_id     = module.app_service_plan.id
+  app_subnet_id           = module.network.app_subnet_id
+  key_vault_id            = module.key_vault.vault_id
+  image_version           = var.image_version
+  acr_login_server        = data.azurerm_container_registry.acr.login_server
+  acr_id                  = data.azurerm_container_registry.acr.id
+  postgres_fqdn           = module.postgres.fqdn
+  postgres_admin_login    = module.postgres.administrator_login
+  postgres_admin_password = module.postgres.administrator_password
 }
