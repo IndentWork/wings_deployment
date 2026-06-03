@@ -5,39 +5,11 @@ on:
     branches: [main]
 
 jobs:
-  detect-changes:
-    name: Detect Changes
-    runs-on: ubuntu-latest
-    outputs:
-      modules: ${{ steps.filter.outputs.modules }}
-      dev: ${{ steps.filter.outputs.dev }}
-      qa: ${{ steps.filter.outputs.qa }}
-      prod: ${{ steps.filter.outputs.prod }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            modules:
-              - 'modules/**'
-            dev:
-              - 'environments/dev/**'
-              - 'modules/**'
-            qa:
-              - 'environments/qa/**'
-              - 'modules/**'
-            prod:
-              - 'environments/prod/**'
-              - 'modules/**'
-
+  # validate-modules runs in parallel — static quality check on the
+  # shared modules. It does not gate the per-env chain.
   validate-modules:
     name: Validate modules
     runs-on: ubuntu-latest
-    needs: [detect-changes]
-    if: needs.detect-changes.outputs.modules == 'true'
 
     steps:
       - uses: actions/checkout@v4
@@ -59,31 +31,16 @@ jobs:
         working-directory: modules
 
   validate-dev:
-    needs: [detect-changes, validate-modules]
-    if: |
-      always() &&
-      needs.detect-changes.outputs.dev == 'true' &&
-      (needs.validate-modules.result == 'success' || needs.validate-modules.result == 'skipped')
     uses: ./.github/workflows/_validate-env.yml
     with:
       environment: dev
 
   validate-qa:
-    needs: [detect-changes, validate-modules]
-    if: |
-      always() &&
-      needs.detect-changes.outputs.qa == 'true' &&
-      (needs.validate-modules.result == 'success' || needs.validate-modules.result == 'skipped')
     uses: ./.github/workflows/_validate-env.yml
     with:
       environment: qa
 
   validate-prod:
-    needs: [detect-changes, validate-modules]
-    if: |
-      always() &&
-      needs.detect-changes.outputs.prod == 'true' &&
-      (needs.validate-modules.result == 'success' || needs.validate-modules.result == 'skipped')
     uses: ./.github/workflows/_validate-env.yml
     with:
       environment: prod
