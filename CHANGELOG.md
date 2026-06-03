@@ -1,6 +1,115 @@
 # CHANGELOG
 
 
+## v0.12.0 (2026-06-03)
+
+### Documentation
+
+- Add pipeline redesign RFC ([#28](https://github.com/IndentWork/wings_deployment/pull/28),
+  [`9d681f4`](https://github.com/IndentWork/wings_deployment/commit/9d681f4776669dde72e5976db6357cbcd157aaf6))
+
+Capture the design discussion for separating deploy.yml into two independent pipelines: infra
+  (Terraform) and image (az CLI / slot swap).
+
+Includes motivation backed by recent failed runs, the principles guiding the split, design decisions
+  made (D2 + Structure 1 + sequential ordering), the 4-mode image deployer state machine with
+  concrete az commands per scenario, prerequisites that must land first (the wings/ health
+  endpoints, the prod staging slot investigation), and a step-by-step implementation plan.
+
+No code changes yet — RFC only.
+
+### Features
+
+- Redesign pipeline — split deploy.yml into infra.yml + image.yml
+  ([#29](https://github.com/IndentWork/wings_deployment/pull/29),
+  [`75190d0`](https://github.com/IndentWork/wings_deployment/commit/75190d03a11865ee1c3f176571c452cff51eaa18))
+
+* feat: split image_version into image.tfvars per env
+
+Step 1 of the pipeline redesign (see docs/pipeline-redesign.md). Move the image_version variable
+  from a default in variables.tf to a dedicated image.tfvars file per env, so the upcoming image.yml
+  pipeline can path-filter on image.tfvars to detect image-version changes independently from infra
+  changes.
+
+- Add environments/{dev,qa,prod}/image.tfvars containing only image_version. - Remove the default
+  value from each env's image_version variable declaration; the variable is now required and sourced
+  from image.tfvars. - Update _plan-env.yml and _destroy-env.yml to pass -var-file=image.tfvars to
+  terraform.
+
+No behavior change — pipeline still deploys the same image_version.
+
+sb is left unchanged for now; it will be removed in a separate change.
+
+Local note: running terraform plan/destroy by hand in environments/ now requires
+  -var-file=image.tfvars since the variable has no default.
+
+* feat: split deploy.yml into infra.yml + image.yml
+
+Complete the pipeline redesign described in docs/pipeline-redesign.md. Infrastructure deployment
+  (terraform) and image deployment (slot swap) are now two independent workflows triggered by
+  different file changes.
+
+- Add infra.yml — top-level workflow replacing the terraform half of deploy.yml. Same validate →
+  plan → apply chain per env in parallel, but path filters exclude image.tfvars so version bumps
+  don't drag terraform along. workflow_dispatch forces all envs.
+
+- Add image.yml — top-level workflow that runs only when an env's image.tfvars changes. Chains
+  downstream of Infra via workflow_run. workflow_dispatch forces all envs.
+
+- Add _image-env.yml reusable workflow holding the 4-mode deploy logic (bootstrap,
+  bootstrap-staging, skip, swap) that previously lived in _apply-env.yml. Two fixes vs the original:
+  - sed uses '#' as delimiter so the DOCKER prefix is now correctly stripped — the previous form was
+  interpreted by GNU sed in ERE mode as alternation, leaving the pipe behind and breaking the
+  mode=skip detection. - Health check polls /healthz/ready (introduced in wings 0.8.0) instead of
+  the home page, so it asks 'can this slot take traffic?' instead of 'is the entire app fully
+  functional?'.
+
+- Slim _apply-env.yml to terraform-only; the image-deploy steps moved to _image-env.yml.
+
+- Bump image.tfvars in all three envs from 0.7.0 to 0.8.0 so the new pipeline rolls out the wings
+  image that includes the /healthz/ready endpoint required by the new health check.
+
+- Delete deploy.yml — superseded by infra.yml + image.yml chained via workflow_run: Bootstrap →
+  Version → Infra → Image.
+
+- Rewrite docs/pipeline-architecture.md to describe the new structure, the infra/image split, and
+  the updated path-filter behavior.
+
+* refactor: simplify infra.yml gating to config.toml-only
+
+Drop detect-changes from infra.yml. Terraform plan/apply is idempotent — running it unconditionally
+  is a no-op when there are no infra changes, and recreates the infra when destroy-envs has wiped
+  it. Path-filtering broke that self-healing.
+
+Also drop the validate-modules dependency from the per-env validate chain. validate-modules is now
+  an independent static-quality job that does not block per-env validate/plan/apply.
+
+The only env-level gate is config.toml's enabled list, checked inside each reusable workflow. An env
+  removed from the enabled list skips its steps cleanly without any change to infra.yml.
+
+Update docs/pipeline-architecture.md to match.
+
+* refactor: apply same simplification to validate.yml
+
+validate.yml had the same detect-changes path filter as infra.yml, so PRs that only changed
+  image.tfvars (or unrelated files) skipped validate-modules and plan-{env} entirely. That meant a
+  PR could merge without any terraform plan validating it.
+
+Drop detect-changes here too. validate-modules runs in parallel as a quality check; each env's
+  validate → plan chain runs unconditionally. Mirrors the structure of infra.yml.
+
+* refactor: stage validate.yml — modules first, then envs
+
+Make validate-modules a gating step for validate.yml: PRs first lint the shared modules, then once
+  that passes the three env-level validate jobs run in parallel, each feeding its own plan job.
+
+This is fine for PR-time validation because we want module issues to short-circuit the whole
+  pipeline before spending Azure plan calls. The post-merge infra.yml keeps validate-modules
+  un-gated so a transient module issue can't block self-healing terraform applies.
+
+* fix: removing qa
+
+
 ## v0.11.0 (2026-06-03)
 
 ### Features
