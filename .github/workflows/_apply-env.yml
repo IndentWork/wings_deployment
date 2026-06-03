@@ -94,14 +94,14 @@ jobs:
             --name "$APP_NAME" --resource-group "$RG" \
             --query "[?name=='DOCKER_CUSTOM_IMAGE_NAME'].value | [0]" -o tsv 2>/dev/null || echo "")
 
-          current_image=$(echo "$current" | sed -E 's|^https?://||')
+          current_image=$(echo "$current" | sed -E 's|^DOCKER\|||; s|^https?://||')
 
           current_staging=$(az webapp config container show \
             --name "$APP_NAME" --resource-group "$RG" \
             --slot staging \
             --query "[?name=='DOCKER_CUSTOM_IMAGE_NAME'].value | [0]" -o tsv 2>/dev/null || echo "")
 
-          current_staging_image=$(echo "$current_staging" | sed -E 's|^https?://||')
+          current_staging_image=$(echo "$current_staging" | sed -E 's|^DOCKER\|||; s|^https?://||')
 
           echo "Current production image: ${current_image:-<none>}"
           echo "Current staging image:    ${current_staging_image:-<none>}"
