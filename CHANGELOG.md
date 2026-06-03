@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v0.13.0 (2026-06-03)
+
+### Features
+
+- Deploy wings 0.9.0 to dev ([#30](https://github.com/IndentWork/wings_deployment/pull/30),
+  [`7882ab2`](https://github.com/IndentWork/wings_deployment/commit/7882ab2eb0cd6cdb518162ea689f4d98c45cb16f))
+
+* chore: deploy wings 0.9.0 to dev
+
+Bumps image_version to 0.9.0 which adds migrate --noinput on container startup, fixing the
+  Application Error on fresh Azure Postgres.
+
+* chore: dev-only config and stage infra.yml pipeline
+
+- Restrict enabled envs to dev only while debugging app startup. - Stage infra.yml: validate-modules
+  gates all per-env work, then validate/plan/apply chain per env mirrors validate.yml structure.
+
+
 ## v0.12.0 (2026-06-03)
 
 ### Documentation
