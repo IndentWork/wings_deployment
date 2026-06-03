@@ -1,6 +1,26 @@
 # CHANGELOG
 
 
+## v0.9.0 (2026-06-03)
+
+### Features
+
+- Bring sb, qa and prod to dev parity
+  ([#25](https://github.com/IndentWork/wings_deployment/pull/25),
+  [`8aee773`](https://github.com/IndentWork/wings_deployment/commit/8aee773f8b44ea67282019ac086b5b04570c6b37))
+
+* feat: bring sb, qa and prod to dev parity
+
+- Add web_app module and ACR data source to sb, qa, prod - Add outputs.tf (image_version,
+  web_app_name, resource_group_name) - Add image_version, acr_name, acr_resource_group_name
+  variables - Add kv_soft_delete_retention_days and kv_purge_protection_enabled to qa and prod - Set
+  prod kv_soft_delete_retention_days=90 and purge_protection_enabled=true
+
+* fix: set prod kv soft delete and purge protection same as dev for testing
+
+* feat: enable qa and prod environments in pipeline
+
+
 ## v0.8.0 (2026-06-02)
 
 ### Features
