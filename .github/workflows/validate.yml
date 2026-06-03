@@ -5,8 +5,8 @@ on:
     branches: [main]
 
 jobs:
-  # validate-modules runs in parallel — static quality check on the
-  # shared modules. It does not gate the per-env chain.
+  # Step 1: validate the shared modules first. If modules are broken,
+  # every env's validate would fail downstream — short-circuit here.
   validate-modules:
     name: Validate modules
     runs-on: ubuntu-latest
@@ -30,17 +30,24 @@ jobs:
         run: tflint --recursive
         working-directory: modules
 
+  # Step 2: env-level validate runs in parallel once modules are clean.
   validate-dev:
+    needs: [validate-modules]
+    if: needs.validate-modules.result == 'success'
     uses: ./.github/workflows/_validate-env.yml
     with:
       environment: dev
 
   validate-qa:
+    needs: [validate-modules]
+    if: needs.validate-modules.result == 'success'
     uses: ./.github/workflows/_validate-env.yml
     with:
       environment: qa
 
   validate-prod:
+    needs: [validate-modules]
+    if: needs.validate-modules.result == 'success'
     uses: ./.github/workflows/_validate-env.yml
     with:
       environment: prod
