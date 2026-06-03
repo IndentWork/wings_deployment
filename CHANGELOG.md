@@ -1,6 +1,34 @@
 # CHANGELOG
 
 
+## v0.10.0 (2026-06-03)
+
+### Features
+
+- Deploy wings 0.7.0 to all environments
+  ([#26](https://github.com/IndentWork/wings_deployment/pull/26),
+  [`2cc0258`](https://github.com/IndentWork/wings_deployment/commit/2cc02586d761cfc4971cc2198150e13c8682f63a))
+
+* feat: deploy wings 0.7.0 to all environments
+
+* feat: run apply-dev, apply-qa and apply-prod in parallel
+
+* feat: add deploy-image.sh script for local image deployment
+
+* feat: add auth-azure.sh to scripts and source it in deploy-image.sh
+
+* fix: lock deploy-image.sh to sandbox only
+
+* fix: strip DOCKER| prefix from container image when detecting deploy mode
+
+Azure returns container images as 'DOCKER|<image>' but the sed only stripped 'https?://'. This made
+  bootstrap-staging never trigger on fresh slots and caused fresh deploys to fall through to swap
+  mode and fail at the health check while RBAC was still propagating for the brand-new managed
+  identity.
+
+Applied the same fix in scripts/deploy-image.sh.
+
+
 ## v0.9.0 (2026-06-03)
 
 ### Features
