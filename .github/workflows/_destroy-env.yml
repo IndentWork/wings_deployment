@@ -38,5 +38,5 @@ jobs:
         working-directory: environments/${{ inputs.environment }}
 
       - name: Terraform Destroy
-        run: terraform destroy -auto-approve
+        run: terraform destroy -var-file=image.tfvars -auto-approve
         working-directory: environments/${{ inputs.environment }}

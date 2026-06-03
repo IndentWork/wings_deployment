@@ -5,39 +5,11 @@ on:
     branches: [main]
 
 jobs:
-  detect-changes:
-    name: Detect Changes
-    runs-on: ubuntu-latest
-    outputs:
-      modules: ${{ steps.filter.outputs.modules }}
-      dev: ${{ steps.filter.outputs.dev }}
-      qa: ${{ steps.filter.outputs.qa }}
-      prod: ${{ steps.filter.outputs.prod }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            modules:
-              - 'modules/**'
-            dev:
-              - 'environments/dev/**'
-              - 'modules/**'
-            qa:
-              - 'environments/qa/**'
-              - 'modules/**'
-            prod:
-              - 'environments/prod/**'
-              - 'modules/**'
-
+  # Step 1: validate the shared modules first. If modules are broken,
+  # every env's validate would fail downstream — short-circuit here.
   validate-modules:
     name: Validate modules
     runs-on: ubuntu-latest
-    needs: [detect-changes]
-    if: needs.detect-changes.outputs.modules == 'true'
 
     steps:
       - uses: actions/checkout@v4
@@ -58,32 +30,24 @@ jobs:
         run: tflint --recursive
         working-directory: modules
 
+  # Step 2: env-level validate runs in parallel once modules are clean.
   validate-dev:
-    needs: [detect-changes, validate-modules]
-    if: |
-      always() &&
-      needs.detect-changes.outputs.dev == 'true' &&
-      (needs.validate-modules.result == 'success' || needs.validate-modules.result == 'skipped')
+    needs: [validate-modules]
+    if: needs.validate-modules.result == 'success'
     uses: ./.github/workflows/_validate-env.yml
     with:
       environment: dev
 
   validate-qa:
-    needs: [detect-changes, validate-modules]
-    if: |
-      always() &&
-      needs.detect-changes.outputs.qa == 'true' &&
-      (needs.validate-modules.result == 'success' || needs.validate-modules.result == 'skipped')
+    needs: [validate-modules]
+    if: needs.validate-modules.result == 'success'
     uses: ./.github/workflows/_validate-env.yml
     with:
       environment: qa
 
   validate-prod:
-    needs: [detect-changes, validate-modules]
-    if: |
-      always() &&
-      needs.detect-changes.outputs.prod == 'true' &&
-      (needs.validate-modules.result == 'success' || needs.validate-modules.result == 'skipped')
+    needs: [validate-modules]
+    if: needs.validate-modules.result == 'success'
     uses: ./.github/workflows/_validate-env.yml
     with:
       environment: prod

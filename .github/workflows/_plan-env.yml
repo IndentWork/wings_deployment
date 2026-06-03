@@ -52,7 +52,7 @@ jobs:
 
       - name: Terraform Plan
         if: steps.check.outputs.enabled == 'true'
-        run: terraform plan -out=${{ inputs.environment }}.tfplan
+        run: terraform plan -var-file=image.tfvars -out=${{ inputs.environment }}.tfplan
         working-directory: environments/${{ inputs.environment }}
 
       - name: Upload Plan
