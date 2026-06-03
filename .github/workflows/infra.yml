@@ -1,5 +1,5 @@
-name: Deploy
-run-name: Deploy ${{ github.event.workflow_run.head_commit.message || format('manual by {0}', github.actor) }}
+name: Infra
+run-name: Infra ${{ github.event.workflow_run.head_commit.message || format('manual by {0}', github.actor) }}
 
 on:
   workflow_run:
@@ -14,29 +14,52 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     outputs:
-      modules: ${{ steps.filter.outputs.modules }}
-      dev: ${{ steps.filter.outputs.dev }}
-      qa: ${{ steps.filter.outputs.qa }}
-      prod: ${{ steps.filter.outputs.prod }}
+      modules: ${{ steps.outcome.outputs.modules }}
+      dev: ${{ steps.outcome.outputs.dev }}
+      qa: ${{ steps.outcome.outputs.qa }}
+      prod: ${{ steps.outcome.outputs.prod }}
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: dorny/paths-filter@v3
         id: filter
+        if: github.event_name == 'workflow_run'
         with:
           filters: |
             modules:
               - 'modules/**'
             dev:
               - 'environments/dev/**'
+              - '!environments/dev/image.tfvars'
               - 'modules/**'
             qa:
               - 'environments/qa/**'
+              - '!environments/qa/image.tfvars'
               - 'modules/**'
             prod:
               - 'environments/prod/**'
+              - '!environments/prod/image.tfvars'
               - 'modules/**'
+
+      - name: Compute outcome
+        id: outcome
+        run: |
+          # On manual dispatch, force all envs to run — the operator is
+          # explicitly asking to redeploy infra. On workflow_run, use the
+          # path-filter results from above (which exclude image.tfvars
+          # since those changes are handled by image.yml).
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "modules=false" >> $GITHUB_OUTPUT
+            echo "dev=true" >> $GITHUB_OUTPUT
+            echo "qa=true" >> $GITHUB_OUTPUT
+            echo "prod=true" >> $GITHUB_OUTPUT
+          else
+            echo "modules=${{ steps.filter.outputs.modules }}" >> $GITHUB_OUTPUT
+            echo "dev=${{ steps.filter.outputs.dev }}" >> $GITHUB_OUTPUT
+            echo "qa=${{ steps.filter.outputs.qa }}" >> $GITHUB_OUTPUT
+            echo "prod=${{ steps.filter.outputs.prod }}" >> $GITHUB_OUTPUT
+          fi
 
   validate-modules:
     name: Validate modules

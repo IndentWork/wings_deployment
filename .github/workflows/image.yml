@@ -1,0 +1,95 @@
+name: Image
+run-name: Image ${{ github.event.workflow_run.head_commit.message || format('manual by {0}', github.actor) }}
+
+on:
+  workflow_run:
+    workflows: ["Infra"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    outputs:
+      dev: ${{ steps.outcome.outputs.dev }}
+      qa: ${{ steps.outcome.outputs.qa }}
+      prod: ${{ steps.outcome.outputs.prod }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name == 'workflow_run'
+        with:
+          filters: |
+            dev:
+              - 'environments/dev/image.tfvars'
+            qa:
+              - 'environments/qa/image.tfvars'
+            prod:
+              - 'environments/prod/image.tfvars'
+
+      - name: Compute outcome
+        id: outcome
+        run: |
+          # On manual dispatch, force all envs to run — the operator is
+          # explicitly asking to redeploy. On workflow_run, use the path
+          # filter results from above.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "dev=true" >> $GITHUB_OUTPUT
+            echo "qa=true" >> $GITHUB_OUTPUT
+            echo "prod=true" >> $GITHUB_OUTPUT
+          else
+            echo "dev=${{ steps.filter.outputs.dev }}" >> $GITHUB_OUTPUT
+            echo "qa=${{ steps.filter.outputs.qa }}" >> $GITHUB_OUTPUT
+            echo "prod=${{ steps.filter.outputs.prod }}" >> $GITHUB_OUTPUT
+          fi
+
+  image-dev:
+    concurrency:
+      group: terraform-ops-dev
+      cancel-in-progress: false
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.dev == 'true'
+    uses: ./.github/workflows/_image-env.yml
+    with:
+      environment: dev
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+  image-qa:
+    concurrency:
+      group: terraform-ops-qa
+      cancel-in-progress: false
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.qa == 'true'
+    uses: ./.github/workflows/_image-env.yml
+    with:
+      environment: qa
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+  image-prod:
+    concurrency:
+      group: terraform-ops-prod
+      cancel-in-progress: false
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.prod == 'true'
+    uses: ./.github/workflows/_image-env.yml
+    with:
+      environment: prod
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
