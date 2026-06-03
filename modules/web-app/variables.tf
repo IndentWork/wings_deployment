@@ -35,7 +35,12 @@ variable "app_subnet_id" {
 }
 
 variable "key_vault_id" {
-  description = "Key Vault ID — used to store the Django SECRET_KEY"
+  description = "Key Vault resource ID — used to store the Django SECRET_KEY"
+  type        = string
+}
+
+variable "key_vault_uri" {
+  description = "Key Vault URI (e.g. https://kv-iw-wings-dev.vault.azure.net/) — used to build Key Vault reference strings for app settings"
   type        = string
 }
 
@@ -68,12 +73,6 @@ variable "postgres_fqdn" {
 variable "postgres_admin_login" {
   description = "Postgres admin username"
   type        = string
-}
-
-variable "postgres_admin_password" {
-  description = "Postgres admin password"
-  type        = string
-  sensitive   = true
 }
 
 variable "postgres_database_name" {

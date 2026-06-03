@@ -1,1 +1,1 @@
-image_version = "0.9.0"
+image_version = "0.10.0"
