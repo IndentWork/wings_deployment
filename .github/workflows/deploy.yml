@@ -147,11 +147,8 @@ jobs:
     concurrency:
       group: terraform-ops-qa
       cancel-in-progress: false
-    needs: [apply-dev, plan-qa]
-    if: |
-      always() &&
-      needs.plan-qa.result == 'success' &&
-      (needs.apply-dev.result == 'success' || needs.apply-dev.result == 'skipped')
+    needs: [plan-qa]
+    if: needs.plan-qa.result == 'success'
     uses: ./.github/workflows/_apply-env.yml
     with:
       environment: qa
@@ -165,11 +162,8 @@ jobs:
     concurrency:
       group: terraform-ops-prod
       cancel-in-progress: false
-    needs: [apply-qa, plan-prod]
-    if: |
-      always() &&
-      needs.plan-prod.result == 'success' &&
-      (needs.apply-qa.result == 'success' || needs.apply-qa.result == 'skipped')
+    needs: [plan-prod]
+    if: needs.plan-prod.result == 'success'
     uses: ./.github/workflows/_apply-env.yml
     with:
       environment: prod
