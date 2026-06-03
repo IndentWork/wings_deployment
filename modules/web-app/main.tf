@@ -16,8 +16,8 @@ locals {
 
   # Key Vault reference syntax — App Service resolves these at runtime using
   # the slot's managed identity. The raw secret value never appears in app settings.
-  secret_key_ref    = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/django-secret-key)"
-  db_password_ref   = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/postgres-admin-password)"
+  secret_key_ref  = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/django-secret-key)"
+  db_password_ref = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/postgres-admin-password)"
 }
 
 data "azurerm_client_config" "current" {}
