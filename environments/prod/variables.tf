@@ -19,13 +19,13 @@ variable "location" {
 variable "kv_soft_delete_retention_days" {
   description = "Number of days soft-deleted Key Vault secrets are retained"
   type        = number
-  default     = 90
+  default     = 7
 }
 
 variable "kv_purge_protection_enabled" {
   description = "Whether purge protection is enabled on the Key Vault"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "image_version" {
