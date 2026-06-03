@@ -14,20 +14,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/auth-azure.sh"
 
-ENV=${1:-}
-
-if [ -z "$ENV" ]; then
-  echo "Usage: $0 <environment>"
-  echo "       environment: dev | sb | qa | prod"
-  exit 1
-fi
-
+ENV="sb"
 ENV_DIR="environments/$ENV"
-
-if [ ! -d "$ENV_DIR" ]; then
-  echo "Error: environment '$ENV' not found at $ENV_DIR"
-  exit 1
-fi
 
 echo "Reading Terraform outputs for $ENV..."
 cd "$ENV_DIR"
