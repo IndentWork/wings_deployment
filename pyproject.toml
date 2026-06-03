@@ -1,6 +1,6 @@
 [project]
 name = "wings-deployment"
-version = "0.13.0"
+version = "0.14.0"
 description = "Terraform IaC for Wings — provisions Azure infrastructure and deploys wings images per environment"
 readme = "README.md"
 requires-python = ">=3.13"

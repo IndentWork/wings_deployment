@@ -1,6 +1,37 @@
 # CHANGELOG
 
 
+## v0.14.0 (2026-06-03)
+
+### Features
+
+- Pass DB credentials via Key Vault references
+  ([#31](https://github.com/IndentWork/wings_deployment/pull/31),
+  [`62a0bea`](https://github.com/IndentWork/wings_deployment/commit/62a0bea15af79d83da33815102d51c7a6cb1edeb))
+
+* feat: pass DB credentials via Key Vault references
+
+Replace DATABASE_URL app setting (which embedded the raw Postgres password in a URL, causing
+  dj_database_url.ParseError on special chars) with four separate app settings:
+
+- DB_HOST — plain Postgres FQDN - DB_USER — plain admin login - DB_PASSWORD — Key Vault reference
+  (secret fetched at runtime by the slot's managed identity, raw value never in app settings) -
+  DB_NAME — plain database name
+
+Also switch SECRET_KEY to a Key Vault reference instead of injecting the raw value directly as an
+  app setting.
+
+Add key_vault_uri variable to web-app module — needed to build the
+  @Microsoft.KeyVault(SecretUri=...) reference strings.
+
+Remove postgres_admin_password from web-app module — no longer needed since the password is read
+  from KV at runtime, not embedded by Terraform.
+
+Bump dev image to 0.10.0 which reads the new DB_* env vars.
+
+* style: terraform fmt fixes
+
+
 ## v0.13.0 (2026-06-03)
 
 ### Features
