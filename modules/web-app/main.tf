@@ -11,15 +11,20 @@ locals {
     var.tags
   )
 
-  database_url = "postgresql://${var.postgres_admin_login}:${var.postgres_admin_password}@${var.postgres_fqdn}:5432/${var.postgres_database_name}?sslmode=require"
-
   production_hostname = "${local.app_name}.azurewebsites.net"
   staging_hostname    = "${local.app_name}-staging.azurewebsites.net"
+
+  # Key Vault reference syntax — App Service resolves these at runtime using
+  # the slot's managed identity. The raw secret value never appears in app settings.
+  secret_key_ref    = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/django-secret-key)"
+  db_password_ref   = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/postgres-admin-password)"
 }
 
 data "azurerm_client_config" "current" {}
 
 # Generate a Django SECRET_KEY and store it in Key Vault.
+# The app setting references it via KV reference — the raw value never
+# appears in app settings.
 resource "random_password" "secret_key" {
   length  = 50
   special = true
@@ -60,8 +65,11 @@ resource "azurerm_linux_web_app" "this" {
     "WINGS_SETTINGS"                      = "azure"
     "WINGS_ENV"                           = var.env
     "WEBSITES_PORT"                       = "8000"
-    "SECRET_KEY"                          = random_password.secret_key.result
-    "DATABASE_URL"                        = local.database_url
+    "SECRET_KEY"                          = local.secret_key_ref
+    "DB_HOST"                             = var.postgres_fqdn
+    "DB_USER"                             = var.postgres_admin_login
+    "DB_PASSWORD"                         = local.db_password_ref
+    "DB_NAME"                             = var.postgres_database_name
     "ALLOWED_HOSTS"                       = local.production_hostname
     "WEBSITES_ENABLE_APP_SERVICE_STORAGE" = "false"
   }
@@ -109,8 +117,11 @@ resource "azurerm_linux_web_app_slot" "staging" {
     "WINGS_SETTINGS"                      = "azure"
     "WINGS_ENV"                           = var.env
     "WEBSITES_PORT"                       = "8000"
-    "SECRET_KEY"                          = random_password.secret_key.result
-    "DATABASE_URL"                        = local.database_url
+    "SECRET_KEY"                          = local.secret_key_ref
+    "DB_HOST"                             = var.postgres_fqdn
+    "DB_USER"                             = var.postgres_admin_login
+    "DB_PASSWORD"                         = local.db_password_ref
+    "DB_NAME"                             = var.postgres_database_name
     "ALLOWED_HOSTS"                       = local.staging_hostname
     "WEBSITES_ENABLE_APP_SERVICE_STORAGE" = "false"
   }

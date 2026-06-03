@@ -81,18 +81,19 @@ data "azurerm_container_registry" "acr" {
 }
 
 module "web_app" {
-  source                  = "../../modules/web-app"
-  project                 = var.project
-  env                     = var.env
-  location                = module.resource_group.location
-  resource_group_name     = module.resource_group.name
-  app_service_plan_id     = module.app_service_plan.id
-  app_subnet_id           = module.network.app_subnet_id
-  key_vault_id            = module.key_vault.vault_id
-  image_version           = var.image_version
-  acr_login_server        = data.azurerm_container_registry.acr.login_server
-  acr_id                  = data.azurerm_container_registry.acr.id
-  postgres_fqdn           = module.postgres.fqdn
-  postgres_admin_login    = module.postgres.administrator_login
-  postgres_admin_password = module.postgres.administrator_password
+  source                = "../../modules/web-app"
+  project               = var.project
+  env                   = var.env
+  location              = module.resource_group.location
+  resource_group_name   = module.resource_group.name
+  app_service_plan_id   = module.app_service_plan.id
+  app_subnet_id         = module.network.app_subnet_id
+  key_vault_id          = module.key_vault.vault_id
+  key_vault_uri         = module.key_vault.vault_uri
+  image_version         = var.image_version
+  acr_login_server      = data.azurerm_container_registry.acr.login_server
+  acr_id                = data.azurerm_container_registry.acr.id
+  postgres_fqdn         = module.postgres.fqdn
+  postgres_admin_login  = module.postgres.administrator_login
+  postgres_database_name = "wings"
 }
