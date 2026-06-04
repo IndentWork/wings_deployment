@@ -38,3 +38,13 @@ resource "azurerm_postgresql_flexible_server" "this" {
 
   tags = local.tags
 }
+
+# The Django application database. The flexible server resource above only
+# creates the server itself (with a default `postgres` database). Django
+# expects a dedicated DB to migrate into.
+resource "azurerm_postgresql_flexible_server_database" "app" {
+  name      = var.database_name
+  server_id = azurerm_postgresql_flexible_server.this.id
+  charset   = "UTF8"
+  collation = "en_US.utf8"
+}

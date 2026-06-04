@@ -63,6 +63,12 @@ variable "administrator_login" {
   default     = "wingsadmin"
 }
 
+variable "database_name" {
+  description = "Name of the Django application database to create on the server"
+  type        = string
+  default     = "wings"
+}
+
 variable "tags" {
   description = "Additional tags to merge onto all resources"
   type        = map(string)

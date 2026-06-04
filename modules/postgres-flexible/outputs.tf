@@ -23,3 +23,8 @@ output "administrator_password" {
   value       = random_password.admin.result
   sensitive   = true
 }
+
+output "database_name" {
+  description = "Name of the Django application database created on the server"
+  value       = azurerm_postgresql_flexible_server_database.app.name
+}

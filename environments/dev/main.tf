@@ -95,5 +95,5 @@ module "web_app" {
   acr_id                 = data.azurerm_container_registry.acr.id
   postgres_fqdn          = module.postgres.fqdn
   postgres_admin_login   = module.postgres.administrator_login
-  postgres_database_name = "wings"
+  postgres_database_name = module.postgres.database_name
 }
