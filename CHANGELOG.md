@@ -1,6 +1,31 @@
 # CHANGELOG
 
 
+## v0.16.0 (2026-06-04)
+
+### Features
+
+- Create Django application database on Postgres server
+  ([#33](https://github.com/IndentWork/wings_deployment/pull/33),
+  [`34eb6f7`](https://github.com/IndentWork/wings_deployment/commit/34eb6f7b0c483aa8ea7f532eafb680d4f4be4178))
+
+azurerm_postgresql_flexible_server creates only the server itself, with a default 'postgres'
+  database. Django connects to a separate DB named 'wings' which we never created — causing:
+
+FATAL: database "wings" does not exist
+
+at container startup.
+
+Add azurerm_postgresql_flexible_server_database 'app' inside the postgres-flexible module, gated by
+  a new database_name variable (default 'wings'). Wire the resulting database name through to the
+  web-app module via a new module output, so the Postgres module is the single source of truth for
+  the DB name.
+
+This matches Microsoft's reference template — Azure-Samples/
+  azure-django-postgres-flexible-appservice creates the application database explicitly via the same
+  resource type.
+
+
 ## v0.15.0 (2026-06-04)
 
 ### Features
