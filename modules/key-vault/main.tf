@@ -21,19 +21,29 @@ resource "azurerm_key_vault" "this" {
   soft_delete_retention_days = var.soft_delete_retention_days
   purge_protection_enabled   = var.purge_protection_enabled
 
-  # allow the Terraform service principal to manage secrets during provisioning
-  access_policy {
-    tenant_id = data.azurerm_client_config.current.tenant_id
-    object_id = data.azurerm_client_config.current.object_id
-
-    secret_permissions = [
-      "Get",
-      "List",
-      "Set",
-      "Delete",
-      "Purge",
-    ]
-  }
+  # Access policies are managed as separate azurerm_key_vault_access_policy
+  # resources (one below for the deployer SP; web-app declares its own).
+  # The inline access_policy block was removed because the azurerm provider
+  # treats it as the complete set — every apply would reconcile away policies
+  # owned by other modules, silently breaking Key Vault references in App
+  # Service. Matches the Microsoft canonical reference template.
 
   tags = local.tags
+}
+
+# Allow the Terraform service principal to manage secrets during provisioning
+# (postgres-flexible writes the admin password here, web-app writes the
+# Django SECRET_KEY).
+resource "azurerm_key_vault_access_policy" "terraform_sp" {
+  key_vault_id = azurerm_key_vault.this.id
+  tenant_id    = data.azurerm_client_config.current.tenant_id
+  object_id    = data.azurerm_client_config.current.object_id
+
+  secret_permissions = [
+    "Get",
+    "List",
+    "Set",
+    "Delete",
+    "Purge",
+  ]
 }
