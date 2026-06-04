@@ -89,7 +89,7 @@ module "web_app" {
   app_service_plan_id    = module.app_service_plan.id
   app_subnet_id          = module.network.app_subnet_id
   key_vault_id           = module.key_vault.vault_id
-  key_vault_uri          = module.key_vault.vault_uri
+  key_vault_name         = module.key_vault.vault_name
   image_version          = var.image_version
   acr_login_server       = data.azurerm_container_registry.acr.login_server
   acr_id                 = data.azurerm_container_registry.acr.id
