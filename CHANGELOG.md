@@ -1,6 +1,29 @@
 # CHANGELOG
 
 
+## v0.16.1 (2026-06-04)
+
+### Bug Fixes
+
+- Manage all KV access policies as separate resources
+  ([#34](https://github.com/IndentWork/wings_deployment/pull/34),
+  [`8391895`](https://github.com/IndentWork/wings_deployment/commit/8391895debe7f3300ea03de968f5c27d23e1f41d))
+
+Remove the inline access_policy block from azurerm_key_vault and re-declare the deployer service
+  principal's access as a separate azurerm_key_vault_access_policy resource.
+
+Root cause: the azurerm provider treats inline access_policy blocks as the complete set. Every apply
+  that touched the parent KV resource silently reconciled away policies owned by other modules — in
+  our case azurerm_key_vault_access_policy.web_app from modules/web-app. The result was the App
+  Service's managed identity disappearing from the vault's policy list and KV references returning
+  the literal @Microsoft.KeyVault(...) string as the secret value, which Postgres then rejected as
+  'password authentication failed for user wingsadmin'.
+
+With all policies as separate resources, each consumer module owns its declaration and the parent KV
+  never reconciles them away. Matches the Microsoft canonical reference template
+  (Azure-Samples/azure-django-postgres-flexible-appservice).
+
+
 ## v0.16.0 (2026-06-04)
 
 ### Features
