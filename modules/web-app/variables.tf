@@ -39,8 +39,8 @@ variable "key_vault_id" {
   type        = string
 }
 
-variable "key_vault_uri" {
-  description = "Key Vault URI (e.g. https://kv-iw-wings-dev.vault.azure.net/) — used to build Key Vault reference strings for app settings"
+variable "key_vault_name" {
+  description = "Key Vault name (e.g. kv-iw-wings-dev) — used to build Key Vault reference strings for app settings via the VaultName=...;SecretName=... syntax"
   type        = string
 }
 

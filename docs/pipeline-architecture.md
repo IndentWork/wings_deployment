@@ -125,7 +125,7 @@ prod: ['environments/prod/image.tfvars']
 | `_validate-env.yml` | `validate.yml`, `infra.yml` | fmt + init + validate + tflint for one env |
 | `_plan-env.yml` | `validate.yml`, `infra.yml` | init + plan (with `-var-file=image.tfvars`) + upload artifact |
 | `_apply-env.yml` | `infra.yml` | init + download plan + apply (terraform only — no image bits) |
-| `_image-env.yml` | `image.yml` | init + read outputs + az login + mode detection + slot operations |
+| `_image-env.yml` | `image.yml` | init + read outputs + az login + `az webapp config container set` on production |
 | `_destroy-env.yml` | `destroy-envs.yml`, `destroy-sandbox.yml` | init + destroy (with `-var-file=image.tfvars`) |
 
 ---
@@ -167,14 +167,12 @@ prod: ['environments/prod/image.tfvars']
   1. Check enabled flag in `config.toml`
   2. `terraform init` + read outputs (`image_version`, `web_app_name`, `resource_group_name`)
   3. `az login` via service principal
-  4. **Detect deploy mode** — query current images on production and staging slots, compare with intended image
-  5. Execute mode-specific actions:
-     - `bootstrap` (production slot empty) → set production image directly, no swap
-     - `bootstrap-staging` (staging slot empty) → set both slots' images directly, no swap
-     - `skip` (production already runs intended image) → no-op
-     - `swap` (production runs different image) → set staging image → poll `https://<app>-staging.azurewebsites.net/healthz/ready` for HTTP 200 (up to 30 attempts × 10s) → `az webapp deployment slot swap` (~5s)
+  4. `az webapp config container set --name <app> --resource-group <rg> --container-image-name acriwwings01.azurecr.io/wings:<version>`
+  5. App Service automatically restarts the container with the new image.
 
-The mode detection is the safety net. The path filter already ensures `image.yml` only runs when `image.tfvars` changed — `mode=skip` only fires when someone has manually set the image via `az` outside the pipeline.
+No staging slot, no blue-green swap, no health-check loop. This matches the canonical Microsoft reference template ([Azure-Samples/azure-django-postgres-flexible-appservice](https://github.com/Azure-Samples/azure-django-postgres-flexible-appservice)) which also deploys to a single production web app.
+
+Trade-off: ~30s of downtime per deploy while the container restarts. Acceptable for a learning project; slot swap can be re-introduced as a focused PR once the baseline is stable.
 
 ---
 
