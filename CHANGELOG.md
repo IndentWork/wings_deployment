@@ -1,6 +1,62 @@
 # CHANGELOG
 
 
+## v0.15.0 (2026-06-04)
+
+### Features
+
+- Align with canonical Microsoft Azure Django reference pattern
+  ([#32](https://github.com/IndentWork/wings_deployment/pull/32),
+  [`ffa07ba`](https://github.com/IndentWork/wings_deployment/commit/ffa07ba5839d36804b604f43ff4bc465d8bec104))
+
+* feat: align with canonical Microsoft Azure Django reference pattern
+
+Drop the staging slot, the blue-green swap pipeline, and the 2-managed-identity setup. Align app
+  settings and KV reference syntax with the official Microsoft reference template
+  (Azure-Samples/azure-django-postgres-flexible-appservice).
+
+Why now: the staging slot + slot swap was the source of nearly every deploy failure we have hit. The
+  slot's managed identity got AcrPull right after creation and lost the RBAC propagation race
+  against the container pull, returning ACRTokenRetrievalFailure. Health-check loops amplified each
+  failure. The mode-detection script accumulated bugs. None of this complexity is present in
+  Microsoft's reference template.
+
+Changes in this commit follow the reference exactly:
+
+- modules/web-app: remove azurerm_linux_web_app_slot.staging and the staging-only KV access policy
+  and AcrPull role assignment. Remove sticky_settings (nothing to be sticky to without slots).
+
+- modules/web-app app_settings: rename DB_HOST/DB_USER/DB_NAME/ DB_PASSWORD to
+  POSTGRES_HOST/POSTGRES_USERNAME/POSTGRES_DATABASE/ POSTGRES_PASSWORD matching the reference; add
+  POSTGRES_PORT and POSTGRES_SSL.
+
+- modules/web-app KV references: switch from SecretUri=https://... to VaultName=...;SecretName=... —
+  the form Microsoft uses. No URI construction needed.
+
+- modules/web-app/variables.tf: replace key_vault_uri input with key_vault_name; modules/key-vault
+  outputs vault_name accordingly.
+
+- _image-env.yml: collapse from 177 lines to 90. No mode detection, no staging image set, no
+  health-check loop, no swap. Single az webapp config container set call against the production web
+  app. App Service restarts the container with the new image.
+
+- environments/dev/image.tfvars: bump to 0.11.0 (the companion wings PR renamed env vars to
+  POSTGRES_*).
+
+- docs/pipeline-architecture.md: describe the new no-slot Image stage.
+
+Trade-off: ~30s of downtime per deploy while the container restarts. Acceptable for a learning
+  project at this stage. Slot swap can be re-introduced cleanly as a focused PR once the baseline
+  works — with a single shared user-assigned identity created before any slot, so the RBAC race goes
+  away.
+
+* fix: remove web-app outputs that referenced the dropped staging slot
+
+The previous commit removed the azurerm_linux_web_app_slot.staging resource but left two outputs
+  (staging_hostname, staging_url) that still referenced it, causing terraform validate to fail. No
+  environment consumes these outputs — safe to delete.
+
+
 ## v0.14.0 (2026-06-03)
 
 ### Features
